@@ -46,6 +46,17 @@ const views = {
   dj: document.getElementById("view-dj")
 };
 
+// Library header elements
+const libraryBackBtn = document.getElementById('libraryBackBtn');
+const libraryTitle = document.getElementById('libraryTitle');
+const librarySubtitle = document.getElementById('librarySubtitle');
+const libraryCount = document.getElementById('libraryCount');
+
+// Library submenu / state
+const navLibraryBtn = document.getElementById("navLibraryBtn");
+const librarySubmenu = document.getElementById("librarySubmenu");
+let currentLibrarySection = "recent"; // default when opening library
+
 let allTracks = [];
 let trackById = new Map();
 let playlists = [];
@@ -232,12 +243,14 @@ player.addEventListener("play", () => {
   if (!iconPlayPause) return;
   iconPlayPause.classList.remove("fa-play");
   iconPlayPause.classList.add("fa-pause");
+  if (btnPlayPause) btnPlayPause.classList.add('playing');
 });
 
 player.addEventListener("pause", () => {
   if (!iconPlayPause) return;
   iconPlayPause.classList.remove("fa-pause");
   iconPlayPause.classList.add("fa-play");
+  if (btnPlayPause) btnPlayPause.classList.remove('playing');
 });
 
 // Time + seek
@@ -320,7 +333,16 @@ function renderTrackList(container, tracks) {
     // Add-to-playlist button
     const addBtn = document.createElement("button");
     addBtn.className = "add-pill";
-    addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+    // indicate if this track exists in any playlist
+    const inAny = playlists.some((p) => (p.trackIds || []).some((id) => id == track.id));
+    if (inAny) {
+      addBtn.classList.add('in-playlist');
+      addBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+      addBtn.title = 'Already in a playlist';
+    } else {
+      addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+      addBtn.title = 'Add to playlist';
+    }
     addBtn.onclick = (e) => {
       e.stopPropagation();
       openAddToPlaylist(track);
@@ -340,6 +362,138 @@ function renderTrackList(container, tracks) {
 
     container.appendChild(row);
   });
+}
+
+// Render helpers for Library categories
+function renderLibrarySection(section) {
+  // ensure library view is visible
+  document.querySelectorAll('.nav-item').forEach((b) => b.classList.remove('active'));
+  if (navLibraryBtn) navLibraryBtn.classList.add('active');
+  switchView('library');
+
+  currentLibrarySection = section;
+  if (!libraryTrackListEl) return;
+  if (section === 'recent') {
+    const sorted = [...allTracks].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    const list = sorted.slice(0, 200);
+    setLibraryHeader('Recently Added', 'Newest tracks', list.length, false);
+    renderTrackList(libraryTrackListEl, list);
+  } else if (section === 'songs') {
+    setLibraryHeader('Songs', 'All songs', allTracks.length, false);
+    renderTrackList(libraryTrackListEl, allTracks);
+  } else if (section === 'artists') {
+    // group by artist
+    const map = new Map();
+    allTracks.forEach((t) => {
+      const key = t.artist || 'Unknown';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(t);
+    });
+    const artists = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
+    libraryTrackListEl.innerHTML = '';
+    setLibraryHeader('Artists', 'Browse by artist', artists.length, false);
+    artists.forEach((artist) => {
+      const item = document.createElement('div');
+      item.className = 'playlist-card';
+      const title = document.createElement('div');
+      title.className = 'playlist-title';
+      title.textContent = artist;
+      const subtitle = document.createElement('div');
+      subtitle.className = 'playlist-subtitle';
+      subtitle.textContent = `${map.get(artist).length} track${map.get(artist).length !== 1 ? 's' : ''}`;
+      item.appendChild(title);
+      item.appendChild(subtitle);
+      item.onclick = () => {
+        setLibraryHeader(artist, `${map.get(artist).length} track${map.get(artist).length !== 1 ? 's' : ''}`, map.get(artist).length, true, () => renderLibrarySection('artists'));
+        renderTrackList(libraryTrackListEl, map.get(artist));
+      };
+      libraryTrackListEl.appendChild(item);
+    });
+  } else if (section === 'albums') {
+    const map = new Map();
+    allTracks.forEach((t) => {
+      const key = (t.album || 'Unknown') + '|' + (t.artist || '');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(t);
+    });
+    const albums = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    libraryTrackListEl.innerHTML = '';
+    setLibraryHeader('Albums', 'Browse by album', albums.length, false);
+    albums.forEach(([key, tracks]) => {
+      const [album, artist] = key.split('|');
+      const item = document.createElement('div');
+      item.className = 'playlist-card';
+      // album art (from first track)
+      const art = document.createElement('img');
+      art.className = 'album-art';
+      art.src = getCoverUrl(tracks[0]);
+      art.onerror = () => { art.style.display = 'none'; };
+      item.appendChild(art);
+      const title = document.createElement('div');
+      title.className = 'playlist-title';
+      title.textContent = album;
+      const subtitle = document.createElement('div');
+      subtitle.className = 'playlist-subtitle';
+      subtitle.textContent = artist ? artist : 'Various Artists';
+      const chip = document.createElement('div');
+      chip.className = 'playlist-chip';
+      chip.textContent = `${tracks.length} track${tracks.length !== 1 ? 's' : ''}`;
+      item.appendChild(title);
+      item.appendChild(subtitle);
+      item.appendChild(chip);
+      item.onclick = () => {
+        setLibraryHeader(album, `${tracks.length} track${tracks.length !== 1 ? 's' : ''}`, tracks.length, true, () => renderLibrarySection('albums'));
+        renderTrackList(libraryTrackListEl, tracks);
+      };
+      libraryTrackListEl.appendChild(item);
+    });
+  } else if (section === 'genres') {
+    const map = new Map();
+    allTracks.forEach((t) => {
+      const g = (t.genre || (t.genres && t.genres[0]) || 'Unknown');
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(t);
+    });
+    const genres = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
+    libraryTrackListEl.innerHTML = '';
+    setLibraryHeader('Genres', 'Browse by genre', genres.length, false);
+    genres.forEach((g) => {
+      const item = document.createElement('div');
+      item.className = 'playlist-card';
+      const title = document.createElement('div');
+      title.className = 'playlist-title';
+      title.textContent = g;
+      const subtitle = document.createElement('div');
+      subtitle.className = 'playlist-subtitle';
+      subtitle.textContent = `${map.get(g).length} track${map.get(g).length !== 1 ? 's' : ''}`;
+      item.appendChild(title);
+      item.appendChild(subtitle);
+      item.onclick = () => {
+        setLibraryHeader(g, `${map.get(g).length} track${map.get(g).length !== 1 ? 's' : ''}`, map.get(g).length, true, () => renderLibrarySection('genres'));
+        renderTrackList(libraryTrackListEl, map.get(g));
+      };
+      libraryTrackListEl.appendChild(item);
+    });
+  }
+}
+
+// library header helper
+let libraryBackCallback = null;
+function setLibraryHeader(title, subtitle, count, showBack, backCb) {
+  if (libraryTitle) libraryTitle.textContent = title || 'Library';
+  if (librarySubtitle) librarySubtitle.textContent = subtitle || '';
+  if (libraryCount) libraryCount.textContent = count ? `${count} item${count !== 1 ? 's' : ''}` : '';
+  if (libraryBackBtn) {
+    if (showBack) {
+      libraryBackBtn.style.display = 'inline-flex';
+      libraryBackCallback = backCb || null;
+      libraryBackBtn.onclick = () => { if (libraryBackCallback) libraryBackCallback(); };
+    } else {
+      libraryBackBtn.style.display = 'none';
+      libraryBackCallback = null;
+      libraryBackBtn.onclick = null;
+    }
+  }
 }
 
 // ---------- Playlists ----------
@@ -465,7 +619,8 @@ function refreshTrackViews() {
   );
   const recent = sortedByRecent.slice(0, 10);
   if (homeRecentEl) renderTrackList(homeRecentEl, recent);
-  if (libraryTrackListEl) renderTrackList(libraryTrackListEl, allTracks);
+  // Re-render the current library section so UI updates (likes, playlist markers)
+  if (libraryTrackListEl) renderLibrarySection(currentLibrarySection || 'songs');
 }
 
 // Prompt-based "Add to playlist" flow
@@ -500,21 +655,51 @@ function openPlaylistModal(track) {
     nonSystemPlaylists.forEach((pl) => {
       const item = document.createElement("div");
       item.className = "modal-item";
-      item.textContent = pl.name;
+      const nameWrap = document.createElement('div');
+      nameWrap.textContent = pl.name;
+      const right = document.createElement("div");
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '0.6rem';
+
       const count = document.createElement("div");
       count.className = "muted";
       count.style.fontSize = "0.85rem";
       count.textContent = `${(pl.trackIds || []).length} track${(pl.trackIds || []).length !== 1 ? "s" : ""}`;
-      item.appendChild(count);
-      item.addEventListener("click", async () => {
-        try {
-          await addTrackToPlaylistOnServer(pl.id, track.id);
-          closePlaylistModal();
-        } catch (err) {
-          console.error(err);
-          alert("Failed to add track to playlist.");
-        }
-      });
+
+      const already = (pl.trackIds || []).some((id) => id == track.id);
+      const statusIcon = document.createElement('i');
+      statusIcon.style.width = '18px';
+      if (already) {
+        statusIcon.className = 'fa-solid fa-check';
+        item.classList.add('in-playlist');
+      } else {
+        statusIcon.className = 'fa-solid fa-circle-plus';
+      }
+
+      right.appendChild(count);
+      right.appendChild(statusIcon);
+
+      item.appendChild(nameWrap);
+      item.appendChild(right);
+
+      if (!already) {
+        item.addEventListener("click", async () => {
+          try {
+            await addTrackToPlaylistOnServer(pl.id, track.id);
+            // update UI: mark as added
+            statusIcon.className = 'fa-solid fa-check';
+            item.classList.add('in-playlist');
+            // refresh playlists and tracks UI
+            renderAllPlaylistsUI();
+            refreshTrackViews();
+          } catch (err) {
+            console.error(err);
+            alert("Failed to add track to playlist.");
+          }
+        });
+      }
+
       playlistModalList.appendChild(item);
     });
   }
@@ -584,6 +769,31 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
     overlay.classList.remove("open");
   });
 });
+
+// Library submenu wiring
+if (navLibraryBtn && librarySubmenu) {
+  navLibraryBtn.addEventListener('click', (e) => {
+    // toggle submenu
+    const open = navLibraryBtn.classList.toggle('active');
+    // toggle nav-group class to show submenu (CSS uses .nav-group.open)
+    const group = navLibraryBtn.parentElement;
+    if (group && group.classList) group.classList.toggle('open', open);
+    // default open to recently added when activating
+    if (open) renderLibrarySection(currentLibrarySection || 'recent');
+    else switchView('home');
+  });
+
+  librarySubmenu.querySelectorAll('.submenu-item').forEach((it) => {
+    it.addEventListener('click', (e) => {
+      const section = it.dataset.lib;
+      renderLibrarySection(section);
+      // close submenu after selection
+      navLibraryBtn.classList.remove('active');
+      const group = navLibraryBtn.parentElement;
+      if (group && group.classList) group.classList.remove('open');
+    });
+  });
+}
 
 // ---------- Search ----------
 
@@ -696,6 +906,7 @@ async function loadPlaylists() {
   const liked = playlists.find((p) => p.id === "liked");
   likedTrackIds = new Set(liked ? liked.trackIds || [] : []);
   renderAllPlaylistsUI();
+  refreshTrackViews();
 }
 
 async function init() {

@@ -70,6 +70,17 @@ nav {
   gap: 0.4rem;
 }
 
+/* Nav group / submenu for library */
+.nav-group { position: relative; display:flex; flex-direction:column; gap:0.2rem; }
+.submenu { display: none; margin-left: 0.4rem; margin-top: 0.2rem; display:flex; flex-direction:column; gap:0.2rem; }
+.nav-group .submenu-item { text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 0.9rem; padding: 0.35rem 0.7rem; border-radius: 0.35rem; cursor: pointer; }
+.nav-group .submenu-item:hover { background: var(--bg-elevated); color: var(--accent); }
+
+/* show submenu when library button is active or sidebar is open and item hovered */
+.nav-group .nav-item.active + .submenu,
+.nav-group .nav-item:focus + .submenu,
+.nav-group.open .submenu { display: flex; }
+
 .nav-item {
   text-align: left;
   background: transparent;
@@ -182,6 +193,27 @@ nav {
   margin-bottom: 0.7rem;
 }
 
+/* Library topbar / breadcrumb */
+.library-topbar {
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  margin-bottom:0.6rem;
+}
+.back-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.library-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.library-subtitle { font-size: 0.9rem; }
+.library-count { margin-left: auto; font-size: 0.9rem; }
+
 .search-input {
   width: 100%;
   padding: 0.45rem 0.7rem;
@@ -222,6 +254,16 @@ nav {
   object-fit: cover;
   flex-shrink: 0;
   background: #222;
+}
+
+/* Album artwork on playlist-card (used for album cards) */
+.playlist-card .album-art {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #222;
+  margin-bottom: 0.4rem;
 }
 
 .track-meta {
@@ -279,6 +321,12 @@ nav {
 
 .add-pill:hover {
   background: #2b2b2b;
+}
+
+.add-pill.in-playlist {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
 }
 
 .like-pill.liked {
@@ -542,11 +590,18 @@ nav {
 
 /* Main play/pause button: bigger orange circle */
 .player-btn-main {
-  background: var(--accent);
-  color: #000;
+  /* default (paused) look */
+  background: #202020;
+  color: var(--text);
   width: 52px;
   height: 52px;
   font-size: 1.4rem;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.player-btn-main.playing {
+  background: var(--accent);
+  color: #000;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 

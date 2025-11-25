@@ -11,9 +11,33 @@ The format is:
 
 ---
 
+## [0.4.2] - 2025-11-25
+
+### Changed
+
+- UI & Library Improvment
+
+- Library submenu polished: categories (Recently Added, Artists, Albums, Songs, Genres) stay the same, 
+ - but now auto-close after selection on both desktop and mobile.
+
+- Added a library header with title, subtitle, item count, and a back/breadcrumb-style button when viewing a specific artist,
+ - album, or genre.
+
+- Library sections now auto-refresh when playlists or likes change so the current view always reflects the latest state.
+
+- Improved add-to-playlist UX: 
+ - track rows show a checked “+” state when already in any playlist, 
+ - and the playlist picker modal shows which playlists contain the track and updates instantly without closing.
+
+- Verified like/unlike flow so heart toggles update /api/playlists/liked/tracks/toggle
+
+- Fixed main play/pause button styling so it clearly shows orange when playing and grey when paused.
+
+- Album cards now display cover art when available via the /api/cover endpoint, with a graceful fallback when no art exists.
+
 ## [0.4.1] - 2025-11-25
 
-### HOTFIX
+### Fixed
 
 - Fixed an issue where you couldn't unlike a song.
 - Added the "+" icon to the now playing section to add a song to a playlist.

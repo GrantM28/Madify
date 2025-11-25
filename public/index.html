@@ -22,7 +22,18 @@
       </div>
       <nav>
         <button class="nav-item active" data-view="home">Home</button>
-        <button class="nav-item" data-view="library">Library</button>
+
+        <div class="nav-group">
+          <button class="nav-item" data-view="library" id="navLibraryBtn">Library</button>
+          <div class="submenu" id="librarySubmenu">
+            <button class="submenu-item" data-lib="recent">Recently Added</button>
+            <button class="submenu-item" data-lib="artists">Artists</button>
+            <button class="submenu-item" data-lib="albums">Albums</button>
+            <button class="submenu-item" data-lib="songs">Songs</button>
+            <button class="submenu-item" data-lib="genres">Genres</button>
+          </div>
+        </div>
+
         <button class="nav-item" data-view="playlists">Playlists</button>
         <button class="nav-item" data-view="dj">AI DJ</button>
       </nav>
@@ -57,6 +68,15 @@
 
         <!-- LIBRARY VIEW -->
         <section id="view-library" class="view">
+          <div id="libraryHeaderBar" class="library-topbar">
+            <button id="libraryBackBtn" class="back-btn" aria-label="Back" style="display:none;">←</button>
+            <div class="library-title-wrap">
+              <div id="libraryTitle" class="library-title">Library</div>
+              <div id="librarySubtitle" class="library-subtitle muted">Browse your collection</div>
+            </div>
+            <div id="libraryCount" class="library-count muted"></div>
+          </div>
+
           <div class="library-header">
             <input
               id="searchInput"
