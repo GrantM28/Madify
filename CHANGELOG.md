@@ -11,15 +11,19 @@ The format is:
 
 ---
 
+## [0.4.4] - 2025-11-25
+
+### Changed
+
+- Changed the playlist section to show a playlist card when clicking on a playlist instead of just playing the songs.
+- Users will now be able to open the playlist to view what songs it contains.
+- Playlist cards also include a play and shuffle button.
+
 ## [0.4.3] - 2025-11-25
 
 ### Fixed
 
 - Robust like/unlike handling: server now accepts numeric-string `trackId` values and logs playlist toggle actions so clients that stringify IDs (or send numbers) work reliably.
-
-### Added
-
-- Small toast/snackbar system for action feedback (success/error/info) in the UI. Likes, playlist adds, and playlist creation now show confirmations.
 
 ## [0.4.2] - 2025-11-25
 

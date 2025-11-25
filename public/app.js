@@ -169,32 +169,7 @@ function syncLikeNowButton() {
   iconLikeNow.classList.toggle("fa-regular", !liked);
 }
 
-// Simple toast/snackbar helper
-function showToast(message, type = "info", duration = 3000) {
-  try {
-    const container = document.getElementById("toastContainer");
-    if (!container) return;
-    const el = document.createElement("div");
-    el.className = `toast ${type}`;
-    el.innerHTML = `<div class="toast-icon">${
-      type === "success" ? '<i class="fa-solid fa-check"></i>' : type === "error" ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-info"></i>'
-    }</div><div class="toast-text">${message}</div>`;
-    container.appendChild(el);
-    // animate in
-    requestAnimationFrame(() => el.classList.add("show"));
-    const t = setTimeout(() => {
-      el.classList.remove("show");
-      setTimeout(() => el.remove(), 220);
-    }, duration);
-    el.addEventListener("click", () => {
-      clearTimeout(t);
-      el.classList.remove("show");
-      setTimeout(() => el.remove(), 120);
-    });
-  } catch (e) {
-    console.warn("Toast error", e);
-  }
-}
+// Toasts removed — no-op for user preference
 
 // ---------- Playback ----------
 
@@ -360,8 +335,8 @@ function renderTrackList(container, tracks) {
     // Add-to-playlist button
     const addBtn = document.createElement("button");
     addBtn.className = "add-pill";
-    // indicate if this track exists in any playlist
-    const inAny = playlists.some((p) => (p.trackIds || []).some((id) => id == track.id));
+    // indicate if this track exists in any non-system playlist (exclude 'liked')
+    const inAny = playlists.some((p) => p.id !== 'liked' && (p.trackIds || []).some((id) => id == track.id));
     if (inAny) {
       addBtn.classList.add('in-playlist');
       addBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
@@ -548,7 +523,11 @@ function renderPlaylistCards(container) {
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
 
-  sorted.forEach((pl) => {
+  // If rendering for the home view, show only a few playlists (preview)
+  const isHome = container && container.id === 'homePlaylists';
+  const display = isHome ? sorted.slice(0, 6) : sorted;
+
+  display.forEach((pl) => {
     const tracks = resolvePlaylistTracks(pl);
 
     const card = document.createElement("div");
@@ -574,7 +553,8 @@ function renderPlaylistCards(container) {
 
     card.onclick = () => {
       if (!tracks.length) return;
-      startPlaylist(tracks);
+      // Open playlist detail view instead of auto-playing
+      openPlaylistDetail(pl);
     };
 
     container.appendChild(card);
@@ -586,6 +566,72 @@ function renderAllPlaylistsUI() {
   if (playlistListEl) renderPlaylistCards(playlistListEl);
 }
 
+// Playlist detail state
+let currentOpenedPlaylist = null;
+
+function openPlaylistDetail(pl) {
+  const detail = document.getElementById('playlistDetail');
+  const nameEl = document.getElementById('playlistDetailName');
+  const countEl = document.getElementById('playlistDetailCount');
+  const listEl = document.getElementById('playlistDetailTrackList');
+  const playBtn = document.getElementById('playlistDetailPlay');
+  const shuffleBtn = document.getElementById('playlistDetailShuffle');
+  const backBtn = document.getElementById('playlistDetailBack');
+  if (!detail || !nameEl || !countEl || !listEl) return;
+
+  currentOpenedPlaylist = pl;
+  // show panel
+  detail.style.display = 'block';
+  // set title/count
+  nameEl.textContent = pl.name;
+  const tracks = resolvePlaylistTracks(pl);
+  countEl.textContent = `${tracks.length} track${tracks.length !== 1 ? 's' : ''}`;
+  // render tracks into detail list
+  listEl.innerHTML = '';
+  // reuse renderTrackList logic but it renders full rows; create a copy of rows
+  if (tracks && tracks.length) renderTrackList(listEl, tracks);
+
+  // wire controls
+  if (playBtn) {
+    playBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (tracks && tracks.length) startPlaylist(tracks);
+    };
+  }
+  if (shuffleBtn) {
+    shuffleBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (!tracks || !tracks.length) return;
+      // simple Fisher-Yates shuffle
+      const shuffled = tracks.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      startPlaylist(shuffled);
+    };
+  }
+  if (backBtn) {
+    backBtn.onclick = (e) => {
+      e.stopPropagation();
+      closePlaylistDetail();
+    };
+  }
+  // switch to playlists view to show the panel
+  document.querySelectorAll('.nav-item').forEach((b) => b.classList.remove('active'));
+  // mark playlists nav active
+  const nav = document.querySelector('.nav-item[data-view="playlists"]');
+  if (nav) nav.classList.add('active');
+  switchView('playlists');
+}
+
+function closePlaylistDetail() {
+  const detail = document.getElementById('playlistDetail');
+  if (!detail) return;
+  detail.style.display = 'none';
+  currentOpenedPlaylist = null;
+}
+
 async function createPlaylistOnServer(name) {
   const res = await fetch("/api/playlists", {
     method: "POST",
@@ -594,14 +640,13 @@ async function createPlaylistOnServer(name) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    showToast(err && err.error ? err.error : "Failed to create playlist", "error");
+    console.error(err && err.error ? err.error : "Failed to create playlist");
     throw new Error("Failed to create playlist");
   }
   const pl = await res.json();
   // reload playlists and update UI so the new playlist appears everywhere
   await loadPlaylists();
   renderAllPlaylistsUI();
-  showToast(`Playlist "${pl.name}" created`, "success");
   return pl;
 }
 
@@ -614,7 +659,7 @@ async function addTrackToPlaylistOnServer(playlistId, trackId) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err && err.error ? err.error : "Failed to add track", "error");
+      console.error(err && err.error ? err.error : "Failed to add track");
       throw new Error("Failed to add track");
     }
     const pl = await res.json();
@@ -622,7 +667,6 @@ async function addTrackToPlaylistOnServer(playlistId, trackId) {
     await loadPlaylists();
     renderAllPlaylistsUI();
     refreshTrackViews();
-    showToast("Added to playlist", "success");
     return pl;
   } catch (err) {
     console.error("addTrackToPlaylistOnServer error:", err);
@@ -643,7 +687,7 @@ async function toggleLike(track) {
     );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err && err.error ? err.error : "Failed to toggle like", "error");
+      console.error(err && err.error ? err.error : "Failed to toggle like");
       return null;
     }
     const pl = await res.json();
@@ -657,11 +701,10 @@ async function toggleLike(track) {
     refreshTrackViews();
     syncLikeNowButton();
     const liked = likedTrackIds.has(track.id);
-    showToast(liked ? "Added to Liked Songs" : "Removed from Liked Songs", liked ? "success" : "info");
     return pl;
   } catch (err) {
     console.error(err);
-    showToast("Failed to update liked songs.", "error");
+    console.error("Failed to update liked songs.");
     return null;
   }
 }
@@ -671,6 +714,7 @@ function refreshTrackViews() {
   const sortedByRecent = [...allTracks].sort(
     (a, b) => (b.addedAt || 0) - (a.addedAt || 0)
   );
+  // Home preview: show a modest number of recent tracks
   const recent = sortedByRecent.slice(0, 10);
   if (homeRecentEl) renderTrackList(homeRecentEl, recent);
   // Re-render the current library section so UI updates (likes, playlist markers)
@@ -747,9 +791,8 @@ function openPlaylistModal(track) {
             // refresh playlists and tracks UI
             renderAllPlaylistsUI();
             refreshTrackViews();
-          } catch (err) {
+            } catch (err) {
             console.error(err);
-            showToast("Failed to add track to playlist.", "error");
           }
         });
       }
@@ -775,7 +818,6 @@ if (playlistModalCreate) {
       closePlaylistModal();
     } catch (err) {
       console.error(err);
-      showToast("Failed to create playlist.", "error");
     }
   });
 }
@@ -878,7 +920,6 @@ if (btnCreatePlaylist && newPlaylistNameInput) {
       renderAllPlaylistsUI();
     } catch (err) {
       console.error(err);
-      alert("Failed to create playlist.");
     }
   });
 }

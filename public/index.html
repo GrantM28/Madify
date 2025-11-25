@@ -105,6 +105,22 @@
             Tap the + button on any song to add it to a playlist.
           </p>
           <div id="playlistList" class="playlist-list"></div>
+
+          <!-- Playlist detail (hidden until a playlist is opened) -->
+          <div id="playlistDetail" class="playlist-detail" style="display:none; margin-top:1rem;">
+            <div class="playlist-detail-header">
+              <div class="playlist-detail-title">
+                <div id="playlistDetailName" class="playlist-title">Playlist</div>
+                <div id="playlistDetailCount" class="playlist-subtitle muted">0 tracks</div>
+              </div>
+              <div class="playlist-detail-controls">
+                <button id="playlistDetailPlay" class="create-button">Play</button>
+                <button id="playlistDetailShuffle" class="create-button">Shuffle</button>
+                <button id="playlistDetailBack" class="create-button">Back</button>
+              </div>
+            </div>
+            <div id="playlistDetailTrackList" class="track-list" style="margin-top:0.8rem;"></div>
+          </div>
         </section>
 
         <!-- DJ VIEW -->
@@ -185,8 +201,7 @@
     </div>
   </div>
 
-  <!-- Toast / snackbar container -->
-  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <!-- toast container removed per user preference -->
 
   <script src="app.js"></script>
 </body>
