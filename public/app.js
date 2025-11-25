@@ -1174,6 +1174,8 @@ async function init() {
   await loadTracks();
   await loadPlaylists();
   refreshTrackViews();
+  // ensure delegated playlist handlers are attached
+  try { setupPlaylistCardActions(); } catch (e) { console.error('setupPlaylistCardActions init error', e); }
 }
 
 init().catch(console.error);
