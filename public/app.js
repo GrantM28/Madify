@@ -169,6 +169,33 @@ function syncLikeNowButton() {
   iconLikeNow.classList.toggle("fa-regular", !liked);
 }
 
+// Simple toast/snackbar helper
+function showToast(message, type = "info", duration = 3000) {
+  try {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+    const el = document.createElement("div");
+    el.className = `toast ${type}`;
+    el.innerHTML = `<div class="toast-icon">${
+      type === "success" ? '<i class="fa-solid fa-check"></i>' : type === "error" ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-info"></i>'
+    }</div><div class="toast-text">${message}</div>`;
+    container.appendChild(el);
+    // animate in
+    requestAnimationFrame(() => el.classList.add("show"));
+    const t = setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 220);
+    }, duration);
+    el.addEventListener("click", () => {
+      clearTimeout(t);
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 120);
+    });
+  } catch (e) {
+    console.warn("Toast error", e);
+  }
+}
+
 // ---------- Playback ----------
 
 function playTrackCore(track) {
@@ -565,23 +592,42 @@ async function createPlaylistOnServer(name) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name })
   });
-  if (!res.ok) throw new Error("Failed to create playlist");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    showToast(err && err.error ? err.error : "Failed to create playlist", "error");
+    throw new Error("Failed to create playlist");
+  }
   const pl = await res.json();
+  // reload playlists and update UI so the new playlist appears everywhere
+  await loadPlaylists();
+  renderAllPlaylistsUI();
+  showToast(`Playlist "${pl.name}" created`, "success");
   return pl;
 }
 
 async function addTrackToPlaylistOnServer(playlistId, trackId) {
-  const res = await fetch(`/api/playlists/${encodeURIComponent(playlistId)}/tracks`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ trackId })
-  });
-  if (!res.ok) throw new Error("Failed to add track");
-  const pl = await res.json();
-  const idx = playlists.findIndex((p) => p.id === pl.id);
-  if (idx !== -1) playlists[idx] = pl;
-  else playlists.push(pl);
-  return pl;
+  try {
+    const res = await fetch(`/api/playlists/${encodeURIComponent(playlistId)}/tracks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trackId })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err && err.error ? err.error : "Failed to add track", "error");
+      throw new Error("Failed to add track");
+    }
+    const pl = await res.json();
+    // update local cache and UI
+    await loadPlaylists();
+    renderAllPlaylistsUI();
+    refreshTrackViews();
+    showToast("Added to playlist", "success");
+    return pl;
+  } catch (err) {
+    console.error("addTrackToPlaylistOnServer error:", err);
+    throw err;
+  }
 }
 
 // Toggle like via special playlist "liked"
@@ -595,7 +641,11 @@ async function toggleLike(track) {
         body: JSON.stringify({ trackId: track.id })
       }
     );
-    if (!res.ok) throw new Error("Failed to toggle like");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err && err.error ? err.error : "Failed to toggle like", "error");
+      return null;
+    }
     const pl = await res.json();
 
     const idx = playlists.findIndex((p) => p.id === pl.id);
@@ -606,9 +656,13 @@ async function toggleLike(track) {
     renderAllPlaylistsUI();
     refreshTrackViews();
     syncLikeNowButton();
+    const liked = likedTrackIds.has(track.id);
+    showToast(liked ? "Added to Liked Songs" : "Removed from Liked Songs", liked ? "success" : "info");
+    return pl;
   } catch (err) {
     console.error(err);
-    alert("Failed to update liked songs.");
+    showToast("Failed to update liked songs.", "error");
+    return null;
   }
 }
 
@@ -695,7 +749,7 @@ function openPlaylistModal(track) {
             refreshTrackViews();
           } catch (err) {
             console.error(err);
-            alert("Failed to add track to playlist.");
+            showToast("Failed to add track to playlist.", "error");
           }
         });
       }
@@ -721,7 +775,7 @@ if (playlistModalCreate) {
       closePlaylistModal();
     } catch (err) {
       console.error(err);
-      alert("Failed to create playlist.");
+      showToast("Failed to create playlist.", "error");
     }
   });
 }

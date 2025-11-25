@@ -279,9 +279,12 @@ app.post("/api/playlists/:id/tracks", (req, res) => {
   const playlists = getPlaylists();
   const playlist = playlists.find((p) => p.id === req.params.id);
   if (!playlist) return res.status(404).json({ error: "Playlist not found" });
-
-  const trackId =
-    req.body && typeof req.body.trackId === "number" ? req.body.trackId : null;
+  // Accept numeric or numeric-string trackId values
+  let trackId = null;
+  if (req.body && req.body.trackId !== undefined && req.body.trackId !== null) {
+    const maybe = Number(req.body.trackId);
+    if (!Number.isNaN(maybe)) trackId = maybe;
+  }
   if (trackId === null)
     return res.status(400).json({ error: "trackId (number) required" });
 
@@ -298,9 +301,12 @@ app.post("/api/playlists/:id/tracks/toggle", (req, res) => {
   const playlists = getPlaylists();
   const playlist = playlists.find((p) => p.id === req.params.id);
   if (!playlist) return res.status(404).json({ error: "Playlist not found" });
-
-  const trackId =
-    req.body && typeof req.body.trackId === "number" ? req.body.trackId : null;
+  // Accept numeric or numeric-string trackId values
+  let trackId = null;
+  if (req.body && req.body.trackId !== undefined && req.body.trackId !== null) {
+    const maybe = Number(req.body.trackId);
+    if (!Number.isNaN(maybe)) trackId = maybe;
+  }
   if (trackId === null)
     return res.status(400).json({ error: "trackId (number) required" });
 
@@ -308,11 +314,14 @@ app.post("/api/playlists/:id/tracks/toggle", (req, res) => {
   const idx = ids.indexOf(trackId);
   if (idx === -1) {
     ids.push(trackId); // like
+    console.log(`Playlist toggle: added track ${trackId} to playlist ${playlist.id}`);
   } else {
     ids.splice(idx, 1); // unlike
+    console.log(`Playlist toggle: removed track ${trackId} from playlist ${playlist.id}`);
   }
   playlist.trackIds = ids;
   savePlaylistsToDisk();
+  // return the updated playlist
   res.json(playlist);
 });
 
