@@ -266,6 +266,10 @@ player.addEventListener("timeupdate", () => {
     seekBar.value = pct;
     timeCurrentEl.textContent = formatTime(player.currentTime);
     timeTotalEl.textContent = formatTime(player.duration);
+    // update visual progress background
+    if (seekBar && seekBar.style) {
+      seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, #333 ${pct}%)`;
+    }
   }
 });
 
@@ -273,6 +277,9 @@ seekBar.addEventListener("input", () => {
   if (!player.duration) return;
   const pct = parseFloat(seekBar.value) / 100;
   player.currentTime = pct * player.duration;
+  // reflect seeking visually
+  const v = parseFloat(seekBar.value) || 0;
+  if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${v}%, #333 ${v}%)`;
 });
 
 // ---------- Rendering tracks ----------
@@ -578,7 +585,7 @@ function renderPlaylistCards(container) {
 
     const chip = document.createElement("div");
     chip.className = "playlist-chip";
-    chip.textContent = pl.id === "liked" ? "Liked songs" : "";
+    chip.textContent = pl.id === "liked" ? "Liked songs" : "Your Playlist";
 
     card.appendChild(subtitle);
     card.appendChild(chip);
