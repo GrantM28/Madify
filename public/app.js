@@ -29,6 +29,15 @@ const iconPlayPause = document.getElementById("iconPlayPause");
 
 const btnLikeNow = document.getElementById("btnLikeNow");
 const iconLikeNow = document.getElementById("iconLikeNow");
+const btnAddNow = document.getElementById("btnAddNow");
+
+// Modal elements
+const playlistModal = document.getElementById("playlistModal");
+const playlistModalList = document.getElementById("playlistModalList");
+const playlistModalClose = document.getElementById("playlistModalClose");
+const playlistModalBackdrop = document.getElementById("playlistModalBackdrop");
+const playlistModalNewName = document.getElementById("playlistModalNewName");
+const playlistModalCreate = document.getElementById("playlistModalCreate");
 
 const views = {
   home: document.getElementById("view-home"),
@@ -461,48 +470,82 @@ function refreshTrackViews() {
 
 // Prompt-based "Add to playlist" flow
 async function openAddToPlaylist(track) {
-  try {
-    const nonSystemPlaylists = playlists.filter((p) => p.id !== "liked");
+  // Open modal-based playlist picker
+  if (!track) return;
+  openPlaylistModal(track);
+}
 
-    if (!nonSystemPlaylists.length) {
-      const name = prompt(
-        "Create a new playlist and add this song.\n\nEnter playlist name:"
-      );
-      if (!name) return;
-      const pl = await createPlaylistOnServer(name.trim());
-      playlists.push(pl);
-      await addTrackToPlaylistOnServer(pl.id, track.id);
-      renderAllPlaylistsUI();
-      return;
-    }
+function closePlaylistModal() {
+  if (!playlistModal) return;
+  playlistModal.classList.remove("open");
+  playlistModal.setAttribute("aria-hidden", "true");
+  playlistModalList.innerHTML = "";
+  playlistModalNewName.value = "";
+}
 
-    const choice = prompt(
-      "Add to playlist:\n" +
-        nonSystemPlaylists
-          .map((p, idx) => `${idx + 1}. ${p.name}`)
-          .join("\n") +
-        "\n\nType a number, or type a new name to create another playlist."
-    );
+function openPlaylistModal(track) {
+  if (!playlistModal) return;
+  playlistModal.classList.add("open");
+  playlistModal.setAttribute("aria-hidden", "false");
+  playlistModalList.innerHTML = "";
 
-    if (!choice) return;
+  const nonSystemPlaylists = playlists.filter((p) => p.id !== "liked");
 
-    const num = parseInt(choice, 10);
-    if (!isNaN(num) && num >= 1 && num <= nonSystemPlaylists.length) {
-      const pl = nonSystemPlaylists[num - 1];
-      await addTrackToPlaylistOnServer(pl.id, track.id);
-    } else {
-      const name = choice.trim();
-      if (!name) return;
+  if (nonSystemPlaylists.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "muted";
+    empty.textContent = "No playlists yet — create one below.";
+    playlistModalList.appendChild(empty);
+  } else {
+    nonSystemPlaylists.forEach((pl) => {
+      const item = document.createElement("div");
+      item.className = "modal-item";
+      item.textContent = pl.name;
+      const count = document.createElement("div");
+      count.className = "muted";
+      count.style.fontSize = "0.85rem";
+      count.textContent = `${(pl.trackIds || []).length} track${(pl.trackIds || []).length !== 1 ? "s" : ""}`;
+      item.appendChild(count);
+      item.addEventListener("click", async () => {
+        try {
+          await addTrackToPlaylistOnServer(pl.id, track.id);
+          closePlaylistModal();
+        } catch (err) {
+          console.error(err);
+          alert("Failed to add track to playlist.");
+        }
+      });
+      playlistModalList.appendChild(item);
+    });
+  }
+}
+
+// Wire modal controls
+if (playlistModalClose) playlistModalClose.addEventListener("click", closePlaylistModal);
+if (playlistModalBackdrop) playlistModalBackdrop.addEventListener("click", closePlaylistModal);
+if (playlistModalCreate) {
+  playlistModalCreate.addEventListener("click", async () => {
+    const name = playlistModalNewName.value && playlistModalNewName.value.trim();
+    if (!name) return;
+    try {
       const pl = await createPlaylistOnServer(name);
       playlists.push(pl);
-      await addTrackToPlaylistOnServer(pl.id, track.id);
+      // if modal was opened, assume user wants to add current track
+      if (currentTrack) await addTrackToPlaylistOnServer(pl.id, currentTrack.id);
+      renderAllPlaylistsUI();
+      closePlaylistModal();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create playlist.");
     }
+  });
+}
 
-    renderAllPlaylistsUI();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update playlist.");
-  }
+if (btnAddNow) {
+  btnAddNow.addEventListener("click", () => {
+    if (!currentTrack) return;
+    openPlaylistModal(currentTrack);
+  });
 }
 
 // ---------- Views / nav ----------

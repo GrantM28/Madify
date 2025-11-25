@@ -11,6 +11,13 @@ The format is:
 
 ---
 
+## [0.4.1] - 2025-11-25
+
+### HOTFIX
+
+- Fixed an issue where you couldn't unlike a song.
+- Added the "+" icon to the now playing section to add a song to a playlist.
+
 ## [0.4.1] – 2025-11-25
 
 ### Added
