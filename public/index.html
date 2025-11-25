@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Madify</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <span class="dot"></span>
+        <span class="logo-text">Madify</span>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="home">Home</button>
+        <button class="nav-item" data-view="library">Library</button>
+        <button class="nav-item" data-view="playlists">Playlists</button>
+        <button class="nav-item" data-view="dj">AI DJ</button>
+      </nav>
+    </aside>
+
+    <div class="overlay" id="overlay"></div>
+
+    <main class="main">
+      <header class="header">
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="header-text">
+          <h1>Good evening</h1>
+          <p class="subtitle">Your personal Unraid-powered music server.</p>
+        </div>
+        <button id="djButton" class="dj-button">
+          <i class="fa-solid fa-robot" style="margin-right: 0.4rem;"></i>
+          <span>AI DJ</span>
+        </button>
+      </header>
+
+      <section class="content">
+        <!-- HOME VIEW -->
+        <section id="view-home" class="view view-active">
+          <h2 class="section-heading">Your playlists</h2>
+          <div id="homePlaylists" class="playlist-list"></div>
+
+          <h2 class="section-heading">Recently added</h2>
+          <div id="homeRecent" class="track-list"></div>
+        </section>
+
+        <!-- LIBRARY VIEW -->
+        <section id="view-library" class="view">
+          <div class="library-header">
+            <input
+              id="searchInput"
+              class="search-input"
+              type="text"
+              placeholder="Search songs, artists, albums"
+            />
+          </div>
+          <div id="libraryTrackList" class="track-list"></div>
+        </section>
+
+        <!-- PLAYLISTS VIEW -->
+        <section id="view-playlists" class="view">
+          <div class="playlist-create">
+            <input
+              id="newPlaylistName"
+              class="search-input"
+              type="text"
+              placeholder="New playlist name"
+            />
+            <button id="btnCreatePlaylist" class="create-button">
+              Create
+            </button>
+          </div>
+          <p class="muted" style="margin-bottom: 0.4rem;">
+            Tap the + button on any song to add it to a playlist.
+          </p>
+          <div id="playlistList" class="playlist-list"></div>
+        </section>
+
+        <!-- DJ VIEW -->
+        <section id="view-dj" class="view">
+          <p class="muted">
+            AI DJ controls will live here soon. For now, tap the AI DJ button
+            in the header to hear from your virtual host.
+          </p>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <footer class="player-bar">
+    <div class="now-playing">
+      <div class="np-art">
+        <div class="np-cover-placeholder" id="npCoverPlaceholder"></div>
+        <img id="npCover" class="np-cover" alt="" />
+      </div>
+      <div class="np-meta">
+        <div class="track-title" id="nowTitle">Nothing playing</div>
+        <div class="track-artist" id="nowArtist"></div>
+      </div>
+    </div>
+
+    <div class="player-main">
+      <div class="player-buttons">
+        <button id="btnShuffle" class="player-btn" aria-label="Shuffle">
+          <i class="fa-solid fa-shuffle"></i>
+        </button>
+        <button id="btnPrev" class="player-btn" aria-label="Previous">
+          <i class="fa-solid fa-backward-step"></i>
+        </button>
+        <button
+          id="btnPlayPause"
+          class="player-btn player-btn-main"
+          aria-label="Play/Pause"
+        >
+          <i id="iconPlayPause" class="fa-solid fa-play"></i>
+        </button>
+        <button id="btnNext" class="player-btn" aria-label="Next">
+          <i class="fa-solid fa-forward-step"></i>
+        </button>
+      </div>
+      <div class="player-seek">
+        <span id="timeCurrent" class="player-time">0:00</span>
+        <input type="range" id="seekBar" min="0" max="100" value="0" />
+        <span id="timeTotal" class="player-time">0:00</span>
+      </div>
+    </div>
+
+    <audio id="player"></audio>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

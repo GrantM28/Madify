@@ -1,0 +1,14 @@
+{
+  "name": "madify",
+  "version": "0.1.1",
+  "description": "Personal music server with Spotify-like UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "music-metadata": "^7.14.0"
+  }
+}
