@@ -533,21 +533,51 @@ function renderPlaylistCards(container) {
     const card = document.createElement("div");
     card.className = "playlist-card";
 
+    // header: title + more button
+    const headerRow = document.createElement('div');
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'space-between';
+    headerRow.style.alignItems = 'center';
+
     const title = document.createElement("div");
     title.className = "playlist-title";
     title.textContent = pl.name;
 
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'more-btn';
+    moreBtn.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+
+    headerRow.appendChild(title);
+    headerRow.appendChild(moreBtn);
+    card.appendChild(headerRow);
+
+    // menu (hidden by default)
+    const menu = document.createElement('div');
+    menu.className = 'playlist-menu';
+    menu.style.display = 'none';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Delete';
+    // hide edit/delete for system playlist 'liked'
+    if (pl.id === 'liked') {
+      editBtn.disabled = true;
+      delBtn.disabled = true;
+      editBtn.style.opacity = '0.5';
+      delBtn.style.opacity = '0.5';
+    }
+    menu.appendChild(editBtn);
+    menu.appendChild(delBtn);
+    card.appendChild(menu);
+
     const subtitle = document.createElement("div");
     subtitle.className = "playlist-subtitle";
-    subtitle.textContent = `${tracks.length} track${
-      tracks.length !== 1 ? "s" : ""
-    }`;
+    subtitle.textContent = `${tracks.length} track${tracks.length !== 1 ? "s" : ""}`;
 
     const chip = document.createElement("div");
     chip.className = "playlist-chip";
     chip.textContent = pl.id === "liked" ? "Liked songs" : "Your playlist";
 
-    card.appendChild(title);
     card.appendChild(subtitle);
     card.appendChild(chip);
 
@@ -558,6 +588,121 @@ function renderPlaylistCards(container) {
     };
 
     container.appendChild(card);
+  });
+}
+
+// Handle menu actions: edit & delete
+function setupPlaylistCardActions() {
+  // delegate via playlist-card elements after renderAllPlaylistsUI
+  document.querySelectorAll('.playlist-card').forEach((card) => {
+    const more = card.querySelector('.more-btn');
+    const menu = card.querySelector('.playlist-menu');
+    const titleEl = card.querySelector('.playlist-title');
+    const editBtn = card.querySelector('.playlist-menu button:nth-child(1)');
+    const delBtn = card.querySelector('.playlist-menu button:nth-child(2)');
+    if (!more || !menu) return;
+
+    more.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // toggle menu
+      menu.style.display = (menu.style.display === 'none' || !menu.style.display) ? 'flex' : 'none';
+    });
+
+    // close menu when clicking outside
+    document.addEventListener('click', (ev) => {
+      if (!card.contains(ev.target)) {
+        menu.style.display = 'none';
+      }
+    });
+
+    // Edit
+    if (editBtn) {
+      editBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        menu.style.display = 'none';
+        // find playlist id by reading title text and matching in playlists array (safer to use data but keep simple)
+        const name = titleEl ? titleEl.textContent : null;
+        const pl = playlists.find((p) => p.name === name);
+        if (!pl) return;
+        if (pl.id === 'liked') return; // don't rename liked
+
+        // replace title with input + actions
+        const input = document.createElement('input');
+        input.className = 'edit-input';
+        input.value = pl.name;
+        titleEl.replaceWith(input);
+        const actions = document.createElement('div');
+        actions.className = 'edit-actions';
+        const save = document.createElement('button');
+        save.className = 'create-button';
+        save.textContent = 'Save';
+        const cancel = document.createElement('button');
+        cancel.className = 'create-button';
+        cancel.textContent = 'Cancel';
+        actions.appendChild(save);
+        actions.appendChild(cancel);
+        card.insertBefore(actions, card.querySelector('.playlist-subtitle'));
+
+        cancel.addEventListener('click', () => {
+          // restore title
+          const restored = document.createElement('div');
+          restored.className = 'playlist-title';
+          restored.textContent = pl.name;
+          input.replaceWith(restored);
+          actions.remove();
+        });
+
+        save.addEventListener('click', async () => {
+          const newName = input.value && input.value.trim();
+          if (!newName) return;
+          try {
+            const res = await fetch(`/api/playlists/${encodeURIComponent(pl.id)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: newName })
+            });
+            if (!res.ok) {
+              console.error('Failed to rename playlist');
+              return;
+            }
+            const updated = await res.json();
+            // reload playlists and UI
+            await loadPlaylists();
+            renderAllPlaylistsUI();
+            setupPlaylistCardActions();
+          } catch (err) {
+            console.error(err);
+          }
+        });
+      });
+    }
+
+    // Delete
+    if (delBtn) {
+      delBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        menu.style.display = 'none';
+        const name = titleEl ? titleEl.textContent : null;
+        const pl = playlists.find((p) => p.name === name);
+        if (!pl) return;
+        if (pl.id === 'liked') return;
+        if (!confirm(`Delete playlist "${pl.name}"? This cannot be undone.`)) return;
+        try {
+          const res = await fetch(`/api/playlists/${encodeURIComponent(pl.id)}`, { method: 'DELETE' });
+          if (!res.ok) {
+            console.error('Failed to delete playlist');
+            return;
+          }
+          await loadPlaylists();
+          renderAllPlaylistsUI();
+          setupPlaylistCardActions();
+          // if deleted playlist was open in detail close it
+          if (currentOpenedPlaylist && currentOpenedPlaylist.id === pl.id) closePlaylistDetail();
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    }
   });
 }
 

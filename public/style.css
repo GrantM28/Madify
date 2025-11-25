@@ -402,6 +402,43 @@ nav {
 .playlist-detail-controls { display:flex; gap:0.5rem; align-items:center; }
 .playlist-detail-controls .create-button { padding:0.4rem 0.7rem; }
 
+/* Playlist card menu / edit */
+.playlist-card { position: relative; }
+.more-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.4rem;
+}
+.more-btn:hover { color: var(--accent); }
+.playlist-menu {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,0.03);
+  border-radius: 6px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 30;
+}
+.playlist-menu button {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+}
+.playlist-menu button:hover { background: rgba(255,255,255,0.03); color: var(--accent); }
+.edit-input { width: 100%; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid #2a2a2a; background: #0b0b0b; color: var(--text); }
+.edit-actions { display:flex; gap:0.4rem; margin-top:0.4rem; }
+.edit-actions .create-button { padding: 0.35rem 0.6rem; }
+
 .create-button {
   padding: 0.45rem 0.9rem;
   border-radius: 999px;

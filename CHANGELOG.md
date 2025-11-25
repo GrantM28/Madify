@@ -18,6 +18,7 @@ The format is:
 - Changed the playlist section to show a playlist card when clicking on a playlist instead of just playing the songs.
 - Users will now be able to open the playlist to view what songs it contains.
 - Playlist cards also include a play and shuffle button.
+- You can now edit and delete playlists.
 
 ## [0.4.3] - 2025-11-25
 

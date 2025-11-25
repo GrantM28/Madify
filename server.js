@@ -339,6 +339,21 @@ app.delete("/api/playlists/:id", (req, res) => {
   res.status(204).end();
 });
 
+// Update playlist (rename)
+app.put("/api/playlists/:id", (req, res) => {
+  const name = req.body && typeof req.body.name === "string" ? String(req.body.name).trim() : "";
+  if (!name) return res.status(400).json({ error: "Name required" });
+
+  const playlists = getPlaylists();
+  const playlist = playlists.find((p) => p.id === req.params.id);
+  if (!playlist) return res.status(404).json({ error: "Playlist not found" });
+  if (playlist.id === "liked") return res.status(400).json({ error: "Cannot rename liked playlist" });
+
+  playlist.name = name;
+  savePlaylistsToDisk();
+  res.json(playlist);
+});
+
 // ---------- Tracks API ----------
 
 app.get("/api/tracks", async (req, res) => {
