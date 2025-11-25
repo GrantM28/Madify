@@ -532,6 +532,8 @@ function renderPlaylistCards(container) {
 
     const card = document.createElement("div");
     card.className = "playlist-card";
+    // attach playlist id for delegated event handling
+    card.dataset.plId = pl.id;
 
     // header: title + more button
     const headerRow = document.createElement('div');
@@ -576,7 +578,7 @@ function renderPlaylistCards(container) {
 
     const chip = document.createElement("div");
     chip.className = "playlist-chip";
-    chip.textContent = pl.id === "liked" ? "Liked songs" : "Your playlist";
+    chip.textContent = pl.id === "liked" ? "Liked songs" : "";
 
     card.appendChild(subtitle);
     card.appendChild(chip);
@@ -593,40 +595,48 @@ function renderPlaylistCards(container) {
 
 // Handle menu actions: edit & delete
 function setupPlaylistCardActions() {
-  // delegate via playlist-card elements after renderAllPlaylistsUI
-  document.querySelectorAll('.playlist-card').forEach((card) => {
-    const more = card.querySelector('.more-btn');
-    const menu = card.querySelector('.playlist-menu');
-    const titleEl = card.querySelector('.playlist-title');
-    const editBtn = card.querySelector('.playlist-menu button:nth-child(1)');
-    const delBtn = card.querySelector('.playlist-menu button:nth-child(2)');
-    if (!more || !menu) return;
+  // Use delegated event handling attached once to document to improve reliability (mobile/touch)
+  if (window._playlistDelegationInitialized) return;
+  window._playlistDelegationInitialized = true;
 
-    more.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
+    const more = e.target.closest('.more-btn');
+    const menuBtn = e.target.closest('.playlist-menu button');
+    const card = e.target.closest('.playlist-card');
+
+    // Handle more button toggle
+    if (more) {
       e.stopPropagation();
-      // toggle menu
-      menu.style.display = (menu.style.display === 'none' || !menu.style.display) ? 'flex' : 'none';
-    });
+      const cardEl = more.closest('.playlist-card');
+      if (!cardEl) return;
+      const menu = cardEl.querySelector('.playlist-menu');
+      if (!menu) return;
+      // hide other menus
+      document.querySelectorAll('.playlist-menu').forEach((m) => {
+        if (m !== menu) m.style.display = 'none';
+      });
+      menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+      return;
+    }
 
-    // close menu when clicking outside
-    document.addEventListener('click', (ev) => {
-      if (!card.contains(ev.target)) {
-        menu.style.display = 'none';
-      }
-    });
+    // Handle clicks on menu buttons (Edit / Delete)
+    if (menuBtn) {
+      e.stopPropagation();
+      const menu = menuBtn.closest('.playlist-menu');
+      const cardEl = menuBtn.closest('.playlist-card');
+      if (!cardEl || !menu) return;
+      const plId = cardEl.dataset.plId;
+      const pl = playlists.find((p) => p.id === plId);
+      // determine which button (index) was clicked
+      const buttons = Array.from(menu.querySelectorAll('button'));
+      const idx = buttons.indexOf(menuBtn);
+      menu.style.display = 'none';
 
-    // Edit
-    if (editBtn) {
-      editBtn.addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        menu.style.display = 'none';
-        // find playlist id by reading title text and matching in playlists array (safer to use data but keep simple)
-        const name = titleEl ? titleEl.textContent : null;
-        const pl = playlists.find((p) => p.name === name);
-        if (!pl) return;
-        if (pl.id === 'liked') return; // don't rename liked
-
-        // replace title with input + actions
+      // Edit
+      if (idx === 0) {
+        if (!pl || pl.id === 'liked') return;
+        const titleEl = cardEl.querySelector('.playlist-title');
+        if (!titleEl) return;
         const input = document.createElement('input');
         input.className = 'edit-input';
         input.value = pl.name;
@@ -641,10 +651,9 @@ function setupPlaylistCardActions() {
         cancel.textContent = 'Cancel';
         actions.appendChild(save);
         actions.appendChild(cancel);
-        card.insertBefore(actions, card.querySelector('.playlist-subtitle'));
+        cardEl.insertBefore(actions, cardEl.querySelector('.playlist-subtitle'));
 
         cancel.addEventListener('click', () => {
-          // restore title
           const restored = document.createElement('div');
           restored.className = 'playlist-title';
           restored.textContent = pl.name;
@@ -665,27 +674,17 @@ function setupPlaylistCardActions() {
               console.error('Failed to rename playlist');
               return;
             }
-            const updated = await res.json();
-            // reload playlists and UI
             await loadPlaylists();
             renderAllPlaylistsUI();
-            setupPlaylistCardActions();
           } catch (err) {
             console.error(err);
           }
         });
-      });
-    }
+      }
 
-    // Delete
-    if (delBtn) {
-      delBtn.addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        menu.style.display = 'none';
-        const name = titleEl ? titleEl.textContent : null;
-        const pl = playlists.find((p) => p.name === name);
-        if (!pl) return;
-        if (pl.id === 'liked') return;
+      // Delete
+      if (idx === 1) {
+        if (!pl || pl.id === 'liked') return;
         if (!confirm(`Delete playlist "${pl.name}"? This cannot be undone.`)) return;
         try {
           const res = await fetch(`/api/playlists/${encodeURIComponent(pl.id)}`, { method: 'DELETE' });
@@ -695,20 +694,40 @@ function setupPlaylistCardActions() {
           }
           await loadPlaylists();
           renderAllPlaylistsUI();
-          setupPlaylistCardActions();
-          // if deleted playlist was open in detail close it
           if (currentOpenedPlaylist && currentOpenedPlaylist.id === pl.id) closePlaylistDetail();
         } catch (err) {
           console.error(err);
         }
-      });
+      }
+      return;
     }
+
+    // Click outside any playlist-card -> close open menus
+    if (!card) {
+      document.querySelectorAll('.playlist-menu').forEach((m) => (m.style.display = 'none'));
+      return;
+    }
+
+    // Click on playlist card body (not the more button) -> open playlist detail
+    const plId = card.dataset.plId;
+    const pl = playlists.find((p) => p.id === plId);
+    if (!pl) return;
+    const tracks = resolvePlaylistTracks(pl);
+    if (!tracks || !tracks.length) return;
+    openPlaylistDetail(pl);
   });
 }
 
 function renderAllPlaylistsUI() {
   if (homePlaylistsEl) renderPlaylistCards(homePlaylistsEl);
   if (playlistListEl) renderPlaylistCards(playlistListEl);
+}
+
+// ensure menu handlers attached after playlists render
+function renderAllPlaylistsUIWithActions() {
+  renderAllPlaylistsUI();
+  // attach menu actions (safe to call multiple times)
+  try { setupPlaylistCardActions(); } catch (e) { console.error('setupPlaylistCardActions error', e); }
 }
 
 // Playlist detail state
