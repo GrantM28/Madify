@@ -73,7 +73,6 @@ async function walkMusicDir(dir, basePath = "") {
     const relNorm = relPath.replace(/\\/g, "/");
     const parts = relNorm.split("/");
 
-    // Path-based fallback: /Artist/Album/Track.ext
     let albumPath = parts.length >= 2 ? parts[parts.length - 2] : "Unknown";
     let artistPath =
       parts.length >= 3 ? parts[parts.length - 3] : albumPath || "Unknown";
@@ -231,17 +230,36 @@ function getPlaylists() {
   return playlistsCache;
 }
 
+// Special built-in playlist for likes
+function ensureLikedPlaylist() {
+  const playlists = getPlaylists();
+  let liked = playlists.find((p) => p.id === "liked");
+  if (!liked) {
+    liked = {
+      id: "liked",
+      name: "Liked Songs",
+      trackIds: [],
+      createdAt: Date.now(),
+      system: true
+    };
+    playlists.push(liked);
+    savePlaylistsToDisk();
+  }
+  return liked;
+}
+
 // ---------- PLAYLIST API ----------
 
-// Get all playlists
+// Get all playlists (including Liked Songs)
 app.get("/api/playlists", (req, res) => {
   const playlists = getPlaylists();
+  ensureLikedPlaylist();
   res.json({ playlists });
 });
 
 // Create playlist
 app.post("/api/playlists", (req, res) => {
-  const name = (req.body && req.body.name) ? String(req.body.name).trim() : "";
+  const name = req.body && req.body.name ? String(req.body.name).trim() : "";
   if (!name) return res.status(400).json({ error: "Name required" });
 
   const playlists = getPlaylists();
@@ -256,7 +274,7 @@ app.post("/api/playlists", (req, res) => {
   res.status(201).json(playlist);
 });
 
-// Add track to playlist
+// Add track to playlist (no-op if already there)
 app.post("/api/playlists/:id/tracks", (req, res) => {
   const playlists = getPlaylists();
   const playlist = playlists.find((p) => p.id === req.params.id);
@@ -275,11 +293,38 @@ app.post("/api/playlists/:id/tracks", (req, res) => {
   res.json(playlist);
 });
 
-// (Optional) delete playlist entirely
+// Toggle track in playlist (used for Liked Songs)
+app.post("/api/playlists/:id/tracks/toggle", (req, res) => {
+  const playlists = getPlaylists();
+  const playlist = playlists.find((p) => p.id === req.params.id);
+  if (!playlist) return res.status(404).json({ error: "Playlist not found" });
+
+  const trackId =
+    req.body && typeof req.body.trackId === "number" ? req.body.trackId : null;
+  if (trackId === null)
+    return res.status(400).json({ error: "trackId (number) required" });
+
+  const ids = playlist.trackIds || [];
+  const idx = ids.indexOf(trackId);
+  if (idx === -1) {
+    ids.push(trackId); // like
+  } else {
+    ids.splice(idx, 1); // unlike
+  }
+  playlist.trackIds = ids;
+  savePlaylistsToDisk();
+  res.json(playlist);
+});
+
+// Delete playlist
 app.delete("/api/playlists/:id", (req, res) => {
   const playlists = getPlaylists();
   const idx = playlists.findIndex((p) => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: "Playlist not found" });
+  // Don't allow Liked Songs to be deleted
+  if (playlists[idx].id === "liked") {
+    return res.status(400).json({ error: "Cannot delete liked playlist" });
+  }
   playlists.splice(idx, 1);
   savePlaylistsToDisk();
   res.status(204).end();

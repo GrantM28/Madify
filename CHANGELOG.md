@@ -11,6 +11,17 @@ The format is:
 
 ---
 
+## [0.4.1] – 2025-11-25
+
+### Added
+
+- Liked Songs playlist that appears alongside other playlists and can be played like a normal playlist.
+- Heart toggle in the bottom now-playing bar to quickly like/unlike the current track.
+- Heart and “+” buttons on every track row to:
+  - Like/unlike individual songs.
+  - Add tracks to any existing playlist or create a new playlist on the fly.
+
+
 ## [0.4.0] – 2025-11-25
 
 ### Added

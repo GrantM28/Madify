@@ -27,6 +27,9 @@ const timeCurrentEl = document.getElementById("timeCurrent");
 const timeTotalEl = document.getElementById("timeTotal");
 const iconPlayPause = document.getElementById("iconPlayPause");
 
+const btnLikeNow = document.getElementById("btnLikeNow");
+const iconLikeNow = document.getElementById("iconLikeNow");
+
 const views = {
   home: document.getElementById("view-home"),
   library: document.getElementById("view-library"),
@@ -37,6 +40,7 @@ const views = {
 let allTracks = [];
 let trackById = new Map();
 let playlists = [];
+let likedTrackIds = new Set();
 
 let currentTrack = null;
 let playQueue = null;
@@ -65,6 +69,7 @@ function setNowPlaying(track, coverUrl) {
     timeTotalEl.textContent = "0:00";
     seekBar.value = 0;
     updateMediaSession(null, null);
+    syncLikeNowButton();
     return;
   }
   nowTitleEl.textContent = track.title;
@@ -83,6 +88,7 @@ function setNowPlaying(track, coverUrl) {
   }
 
   updateMediaSession(track, coverUrl);
+  syncLikeNowButton();
 }
 
 function getCoverUrl(track) {
@@ -123,6 +129,24 @@ function updateMediaSession(track, coverUrl) {
   navigator.mediaSession.setActionHandler("nexttrack", () =>
     playNextInQueueOrShuffle()
   );
+}
+
+// ---------- Like helpers ----------
+
+function syncLikeNowButton() {
+  if (!btnLikeNow || !iconLikeNow) return;
+  if (!currentTrack) {
+    btnLikeNow.disabled = true;
+    btnLikeNow.classList.remove("liked");
+    iconLikeNow.classList.remove("fa-solid");
+    iconLikeNow.classList.add("fa-regular");
+    return;
+  }
+  btnLikeNow.disabled = false;
+  const liked = likedTrackIds.has(currentTrack.id);
+  btnLikeNow.classList.toggle("liked", liked);
+  iconLikeNow.classList.toggle("fa-solid", liked);
+  iconLikeNow.classList.toggle("fa-regular", !liked);
 }
 
 // ---------- Playback ----------
@@ -262,6 +286,7 @@ function renderTrackList(container, tracks) {
     const actions = document.createElement("div");
     actions.className = "track-actions";
 
+    // Play button
     const playBtn = document.createElement("button");
     playBtn.className = "play-pill";
     playBtn.textContent = "Play";
@@ -270,6 +295,20 @@ function renderTrackList(container, tracks) {
       playTrackStandalone(track);
     };
 
+    // Like button
+    const likeBtn = document.createElement("button");
+    likeBtn.className = "add-pill like-pill";
+    const likeIcon = document.createElement("i");
+    const liked = likedTrackIds.has(track.id);
+    likeIcon.className = liked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+    likeBtn.classList.toggle("liked", liked);
+    likeBtn.appendChild(likeIcon);
+    likeBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleLike(track);
+    };
+
+    // Add-to-playlist button
     const addBtn = document.createElement("button");
     addBtn.className = "add-pill";
     addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
@@ -279,6 +318,7 @@ function renderTrackList(container, tracks) {
     };
 
     actions.appendChild(playBtn);
+    actions.appendChild(likeBtn);
     actions.appendChild(addBtn);
 
     row.appendChild(cover);
@@ -310,40 +350,45 @@ function renderPlaylistCards(container) {
     return;
   }
 
-  playlists
+  const sorted = playlists
     .slice()
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .forEach((pl) => {
-      const tracks = resolvePlaylistTracks(pl);
-
-      const card = document.createElement("div");
-      card.className = "playlist-card";
-
-      const title = document.createElement("div");
-      title.className = "playlist-title";
-      title.textContent = pl.name;
-
-      const subtitle = document.createElement("div");
-      subtitle.className = "playlist-subtitle";
-      subtitle.textContent = `${tracks.length} track${
-        tracks.length !== 1 ? "s" : ""
-      }`;
-
-      const chip = document.createElement("div");
-      chip.className = "playlist-chip";
-      chip.textContent = "Your playlist";
-
-      card.appendChild(title);
-      card.appendChild(subtitle);
-      card.appendChild(chip);
-
-      card.onclick = () => {
-        if (!tracks.length) return;
-        startPlaylist(tracks);
-      };
-
-      container.appendChild(card);
+    .sort((a, b) => {
+      if (a.id === "liked" && b.id !== "liked") return -1;
+      if (b.id === "liked" && a.id !== "liked") return 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
     });
+
+  sorted.forEach((pl) => {
+    const tracks = resolvePlaylistTracks(pl);
+
+    const card = document.createElement("div");
+    card.className = "playlist-card";
+
+    const title = document.createElement("div");
+    title.className = "playlist-title";
+    title.textContent = pl.name;
+
+    const subtitle = document.createElement("div");
+    subtitle.className = "playlist-subtitle";
+    subtitle.textContent = `${tracks.length} track${
+      tracks.length !== 1 ? "s" : ""
+    }`;
+
+    const chip = document.createElement("div");
+    chip.className = "playlist-chip";
+    chip.textContent = pl.id === "liked" ? "Liked songs" : "Your playlist";
+
+    card.appendChild(title);
+    card.appendChild(subtitle);
+    card.appendChild(chip);
+
+    card.onclick = () => {
+      if (!tracks.length) return;
+      startPlaylist(tracks);
+    };
+
+    container.appendChild(card);
+  });
 }
 
 function renderAllPlaylistsUI() {
@@ -370,16 +415,56 @@ async function addTrackToPlaylistOnServer(playlistId, trackId) {
   });
   if (!res.ok) throw new Error("Failed to add track");
   const pl = await res.json();
-  // Update local copy
   const idx = playlists.findIndex((p) => p.id === pl.id);
   if (idx !== -1) playlists[idx] = pl;
+  else playlists.push(pl);
   return pl;
 }
 
-// Prompt-based "Add to playlist" flow (simple but works)
+// Toggle like via special playlist "liked"
+async function toggleLike(track) {
+  try {
+    const res = await fetch(
+      "/api/playlists/liked/tracks/toggle",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: track.id })
+      }
+    );
+    if (!res.ok) throw new Error("Failed to toggle like");
+    const pl = await res.json();
+
+    const idx = playlists.findIndex((p) => p.id === pl.id);
+    if (idx !== -1) playlists[idx] = pl;
+    else playlists.push(pl);
+
+    likedTrackIds = new Set(pl.trackIds || []);
+    renderAllPlaylistsUI();
+    refreshTrackViews();
+    syncLikeNowButton();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update liked songs.");
+  }
+}
+
+function refreshTrackViews() {
+  if (!allTracks.length) return;
+  const sortedByRecent = [...allTracks].sort(
+    (a, b) => (b.addedAt || 0) - (a.addedAt || 0)
+  );
+  const recent = sortedByRecent.slice(0, 10);
+  if (homeRecentEl) renderTrackList(homeRecentEl, recent);
+  if (libraryTrackListEl) renderTrackList(libraryTrackListEl, allTracks);
+}
+
+// Prompt-based "Add to playlist" flow
 async function openAddToPlaylist(track) {
   try {
-    if (!playlists.length) {
+    const nonSystemPlaylists = playlists.filter((p) => p.id !== "liked");
+
+    if (!nonSystemPlaylists.length) {
       const name = prompt(
         "Create a new playlist and add this song.\n\nEnter playlist name:"
       );
@@ -393,7 +478,7 @@ async function openAddToPlaylist(track) {
 
     const choice = prompt(
       "Add to playlist:\n" +
-        playlists
+        nonSystemPlaylists
           .map((p, idx) => `${idx + 1}. ${p.name}`)
           .join("\n") +
         "\n\nType a number, or type a new name to create another playlist."
@@ -402,8 +487,8 @@ async function openAddToPlaylist(track) {
     if (!choice) return;
 
     const num = parseInt(choice, 10);
-    if (!isNaN(num) && num >= 1 && num <= playlists.length) {
-      const pl = playlists[num - 1];
+    if (!isNaN(num) && num >= 1 && num <= nonSystemPlaylists.length) {
+      const pl = nonSystemPlaylists[num - 1];
       await addTrackToPlaylistOnServer(pl.id, track.id);
     } else {
       const name = choice.trim();
@@ -528,6 +613,14 @@ btnShuffle.addEventListener("click", () => {
   btnShuffle.classList.toggle("player-btn-active", shuffleEnabled);
 });
 
+// Like button in now-playing bar
+if (btnLikeNow) {
+  btnLikeNow.addEventListener("click", () => {
+    if (!currentTrack) return;
+    toggleLike(currentTrack);
+  });
+}
+
 // ---------- Init ----------
 
 async function loadTracks() {
@@ -545,13 +638,6 @@ async function loadTracks() {
   allTracks = tracks;
   trackById = new Map();
   tracks.forEach((t) => trackById.set(t.id, t));
-
-  const sortedByRecent = [...tracks].sort(
-    (a, b) => (b.addedAt || 0) - (a.addedAt || 0)
-  );
-  const recent = sortedByRecent.slice(0, 10);
-  if (homeRecentEl) renderTrackList(homeRecentEl, recent);
-  if (libraryTrackListEl) renderTrackList(libraryTrackListEl, tracks);
 }
 
 async function loadPlaylists() {
@@ -563,6 +649,9 @@ async function loadPlaylists() {
   }
   const data = await res.json();
   playlists = data.playlists || [];
+
+  const liked = playlists.find((p) => p.id === "liked");
+  likedTrackIds = new Set(liked ? liked.trackIds || [] : []);
   renderAllPlaylistsUI();
 }
 
@@ -571,6 +660,7 @@ async function init() {
   setNowPlaying(null, null);
   await loadTracks();
   await loadPlaylists();
+  refreshTrackViews();
 }
 
 init().catch(console.error);
