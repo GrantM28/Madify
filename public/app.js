@@ -1078,7 +1078,7 @@ async function toggleLike(track) {
 function refreshTrackViews() {
   if (!allTracks.length) return;
   const sortedByRecent = [...allTracks].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-  const recent = sortedByRecent.slice(0, 15);
+  const recent = sortedByRecent.slice(0, 3);
   if (homeRecentEl) renderTrackList(homeRecentEl, recent);
   
   if (currentLibraryView) {
