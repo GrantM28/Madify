@@ -132,6 +132,9 @@ function openNowPlayingFull() {
   const wrap = document.getElementById('nowFull');
   const content = document.getElementById('nowFullContent');
   if (!wrap || !content) return;
+  // Only open full-screen when there is an active playing track
+  if (!currentTrack) return;
+  if (player && player.paused) return;
   updateFullScreenNowPlaying(currentTrack, currentTrack ? getCoverUrl(currentTrack) : null);
   renderFullQueue();
   wrap.classList.add('open');
@@ -282,6 +285,14 @@ function setNowPlaying(track, coverUrl) {
 
   updateMediaSession(track, coverUrl);
   syncLikeNowButton();
+  // show mini player only when a track is playing
+  try {
+    const mini = document.querySelector('footer.player-bar');
+    if (mini) {
+      if (track && player && !player.paused) mini.style.display = '';
+      else mini.style.display = 'none';
+    }
+  } catch (e) {}
 }
 
 function getCoverUrl(track) {
@@ -422,6 +433,12 @@ player.addEventListener("play", () => {
   // sync fullscreen play icon
   const fIcon = document.getElementById('nowFullPlayIcon');
   if (fIcon) { fIcon.classList.remove('fa-play'); fIcon.classList.add('fa-pause'); }
+  // show mini player when playback starts (if fullscreen isn't open)
+  try {
+    const wrap = document.getElementById('nowFull');
+    const mini = document.querySelector('footer.player-bar');
+    if (mini && (!wrap || !wrap.classList.contains('open'))) mini.style.display = '';
+  } catch (e) {}
 });
 
 player.addEventListener("pause", () => {
@@ -431,6 +448,8 @@ player.addEventListener("pause", () => {
   if (btnPlayPause) btnPlayPause.classList.remove('playing');
   const fIcon = document.getElementById('nowFullPlayIcon');
   if (fIcon) { fIcon.classList.remove('fa-pause'); fIcon.classList.add('fa-play'); }
+  // hide mini player when paused
+  try { const mini = document.querySelector('footer.player-bar'); if (mini) mini.style.display = 'none'; } catch (e) {}
 });
 
 // Time + seek
