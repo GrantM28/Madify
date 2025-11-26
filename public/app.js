@@ -1654,15 +1654,32 @@ document.querySelectorAll(".category-btn").forEach((btn) => {
 
 if (libraryBackBtn) {
   libraryBackBtn.addEventListener("click", () => {
-    if (currentLibraryView) {
-      renderLibraryCategory(currentLibraryView);
-      return;
-    }
+    // If viewing an artist or album detail, go back to library root
     if (currentArtist) {
-      // go back to library view
       currentArtist = null;
       switchView('library');
+      return;
     }
+    if (currentAlbum) {
+      currentAlbum = null;
+      switchView('library');
+      return;
+    }
+
+    // If currently viewing a library category (e.g. All Songs/Artists/Albums/Genres),
+    // return to the library root showing the category hero cards instead of
+    // re-rendering the same category.
+    if (currentLibraryView) {
+      currentLibraryView = null;
+      currentLibraryData = null;
+      if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'grid';
+      if (libraryTrackListEl) libraryTrackListEl.innerHTML = '';
+      if (libraryHeaderBar) libraryHeaderBar.style.display = 'none';
+      return;
+    }
+
+    // fallback: just ensure we're on the library view
+    switchView('library');
   });
 }
 
