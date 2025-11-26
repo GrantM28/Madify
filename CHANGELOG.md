@@ -20,6 +20,10 @@ The format is:
 - Playlist cards also include a play and shuffle button.
 - You can now edit and delete playlists.
 
+### Added
+
+- Added fullscreen now playing screen with swipe to dismiss.
+
 ## [0.4.3] - 2025-11-25
 
 ### Fixed

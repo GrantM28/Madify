@@ -78,6 +78,179 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
+// ---------- Fullscreen Now Playing ----------
+function updateFullScreenNowPlaying(track, coverUrl) {
+  const art = document.getElementById('nowFullArt');
+  const title = document.getElementById('nowFullTitle');
+  const artist = document.getElementById('nowFullArtist');
+  const playIcon = document.getElementById('nowFullPlayIcon');
+  if (!title || !artist) return;
+  if (!track) {
+    title.textContent = 'Nothing playing';
+    artist.textContent = '';
+    if (art) art.src = '';
+    if (playIcon) { playIcon.classList.remove('fa-pause'); playIcon.classList.add('fa-play'); }
+    return;
+  }
+  title.textContent = track.title;
+  artist.textContent = track.artist || track.album || '';
+  if (art && coverUrl) art.src = coverUrl;
+  // sync play icon
+  if (playIcon) {
+    if (player && !player.paused) { playIcon.classList.remove('fa-play'); playIcon.classList.add('fa-pause'); }
+    else { playIcon.classList.remove('fa-pause'); playIcon.classList.add('fa-play'); }
+  }
+}
+
+function renderFullQueue() {
+  const el = document.getElementById('nowFullQueueList');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!playQueue || !playQueue.length) {
+    el.innerHTML = '<div class="muted">Queue is empty</div>';
+    return;
+  }
+  playQueue.forEach((t, idx) => {
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.style.padding = '0.4rem';
+    const title = document.createElement('div');
+    title.textContent = `${t.title}`;
+    title.style.flex = '1';
+    const play = document.createElement('button');
+    play.className = 'play-pill';
+    play.textContent = 'Play';
+    play.onclick = (e) => { e.stopPropagation(); queueIndex = idx; startPlaylist(playQueue); closeNowPlayingFull('other'); };
+    row.appendChild(title);
+    row.appendChild(play);
+    el.appendChild(row);
+  });
+}
+
+let _nowFullTouch = { startY: 0, currentY: 0, dragging: false };
+function openNowPlayingFull() {
+  const wrap = document.getElementById('nowFull');
+  const content = document.getElementById('nowFullContent');
+  if (!wrap || !content) return;
+  updateFullScreenNowPlaying(currentTrack, currentTrack ? getCoverUrl(currentTrack) : null);
+  renderFullQueue();
+  wrap.classList.add('open');
+  wrap.setAttribute('aria-hidden', 'false');
+
+  // hide the mini player while full screen is visible
+  try { const mini = document.querySelector('footer.player-bar'); if (mini) mini.style.display = 'none'; } catch (e) {}
+
+  // touch handlers for swipe down
+  content.addEventListener('touchstart', _nowFullTouchStart, { passive: true });
+  content.addEventListener('touchmove', _nowFullTouchMove, { passive: false });
+  content.addEventListener('touchend', _nowFullTouchEnd);
+  // pointer fallback
+  content.addEventListener('pointerdown', _nowFullPointerDown);
+}
+
+function closeNowPlayingFull(reason = 'other') {
+  const wrap = document.getElementById('nowFull');
+  const content = document.getElementById('nowFullContent');
+  if (!wrap || !content) return;
+  wrap.classList.remove('open');
+  wrap.setAttribute('aria-hidden', 'true');
+  content.style.transform = '';
+  content.classList.remove('dragging');
+  // remove handlers
+  content.removeEventListener('touchstart', _nowFullTouchStart);
+  content.removeEventListener('touchmove', _nowFullTouchMove);
+  content.removeEventListener('touchend', _nowFullTouchEnd);
+  content.removeEventListener('pointerdown', _nowFullPointerDown);
+
+  // show mini player only when dismissed via swipe
+  try {
+    const mini = document.querySelector('footer.player-bar');
+    if (mini) {
+      if (reason === 'swipe') mini.style.display = '';
+      else mini.style.display = 'none';
+    }
+  } catch (e) { console.error('closeNowPlayingFull display toggle', e); }
+}
+
+function _nowFullTouchStart(ev) {
+  const t = ev.touches[0];
+  _nowFullTouch.startY = t.clientY;
+  _nowFullTouch.currentY = t.clientY;
+  _nowFullTouch.dragging = true;
+}
+
+function _nowFullTouchMove(ev) {
+  if (!_nowFullTouch.dragging) return;
+  const t = ev.touches[0];
+  _nowFullTouch.currentY = t.clientY;
+  const dy = Math.max(0, _nowFullTouch.currentY - _nowFullTouch.startY);
+  const content = document.getElementById('nowFullContent');
+  if (content) {
+    content.classList.add('dragging');
+    content.style.transform = `translateY(${dy}px)`;
+    if (dy > 10) ev.preventDefault();
+  }
+}
+
+function _nowFullTouchEnd() {
+  if (!_nowFullTouch.dragging) return;
+  const dy = Math.max(0, _nowFullTouch.currentY - _nowFullTouch.startY);
+  _nowFullTouch.dragging = false;
+  const content = document.getElementById('nowFullContent');
+  if (content) {
+    content.classList.remove('dragging');
+    content.style.transform = '';
+  }
+  if (dy > 120) {
+    closeNowPlayingFull('swipe');
+  }
+}
+
+function _nowFullPointerDown(ev) {
+  const content = document.getElementById('nowFullContent');
+  if (!content) return;
+  let startY = ev.clientY;
+  const onMove = (e) => {
+    const dy = Math.max(0, e.clientY - startY);
+    content.classList.add('dragging');
+    content.style.transform = `translateY(${dy}px)`;
+  };
+  const onUp = (e) => {
+    const dy = Math.max(0, e.clientY - startY);
+    content.classList.remove('dragging');
+    content.style.transform = '';
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    if (dy > 120) closeNowPlayingFull('swipe');
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp, { once: true });
+}
+
+// wire fullscreen controls after DOM ready
+function setupFullScreenHandlers() {
+  const art = document.getElementById('nowFullArt');
+  const play = document.getElementById('nowFullPlay');
+  const prev = document.getElementById('nowFullPrev');
+  const next = document.getElementById('nowFullNext');
+  const close = document.getElementById('nowFullClose');
+  const queueBtn = document.getElementById('nowFullQueue');
+  const shuffleBtn = document.getElementById('nowFullShuffle');
+  const queueList = document.getElementById('nowFullQueueList');
+
+  if (art) art.addEventListener('click', () => openNowPlayingFull());
+  if (play) play.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (player.paused) player.play(); else player.pause();
+  });
+  if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); playPreviousInQueue(); });
+  if (next) next.addEventListener('click', (e) => { e.stopPropagation(); playNextInQueueOrShuffle(); });
+  if (close) close.addEventListener('click', (e) => { e.stopPropagation(); closeNowPlayingFull('other'); });
+  if (queueBtn) queueBtn.addEventListener('click', (e) => { e.stopPropagation(); if (!queueList) return; queueList.style.display = (queueList.style.display === 'none' || !queueList.style.display) ? 'block' : 'none'; renderFullQueue(); });
+  if (shuffleBtn) shuffleBtn.addEventListener('click', (e) => { e.stopPropagation(); shuffleEnabled = !shuffleEnabled; shuffleBtn.classList.toggle('player-btn-active', shuffleEnabled); });
+}
+
+
 function setNowPlaying(track, coverUrl) {
   if (!track) {
     nowTitleEl.textContent = "Nothing playing";
@@ -246,6 +419,9 @@ player.addEventListener("play", () => {
   iconPlayPause.classList.remove("fa-play");
   iconPlayPause.classList.add("fa-pause");
   if (btnPlayPause) btnPlayPause.classList.add('playing');
+  // sync fullscreen play icon
+  const fIcon = document.getElementById('nowFullPlayIcon');
+  if (fIcon) { fIcon.classList.remove('fa-play'); fIcon.classList.add('fa-pause'); }
 });
 
 player.addEventListener("pause", () => {
@@ -253,6 +429,8 @@ player.addEventListener("pause", () => {
   iconPlayPause.classList.remove("fa-pause");
   iconPlayPause.classList.add("fa-play");
   if (btnPlayPause) btnPlayPause.classList.remove('playing');
+  const fIcon = document.getElementById('nowFullPlayIcon');
+  if (fIcon) { fIcon.classList.remove('fa-pause'); fIcon.classList.add('fa-play'); }
 });
 
 // Time + seek
@@ -1183,6 +1361,7 @@ async function init() {
   refreshTrackViews();
   // ensure delegated playlist handlers are attached
   try { setupPlaylistCardActions(); } catch (e) { console.error('setupPlaylistCardActions init error', e); }
+  try { setupFullScreenHandlers(); } catch (e) { console.error('setupFullScreenHandlers init error', e); }
 }
 
 init().catch(console.error);

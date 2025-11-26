@@ -203,6 +203,35 @@
 
   <!-- toast container removed per user preference -->
 
+    <!-- Fullscreen Now Playing -->
+    <div id="nowFull" class="now-full" aria-hidden="true">
+      <div class="now-full-backdrop" id="nowFullBackdrop"></div>
+      <div class="now-full-content" id="nowFullContent">
+        <div class="now-full-handle" id="nowFullHandle">↧</div>
+        <div class="now-full-art-wrap">
+          <img id="nowFullArt" class="now-full-art" src="" alt="Album art" />
+        </div>
+        <div class="now-full-meta">
+          <div id="nowFullTitle" class="now-full-title">Nothing playing</div>
+          <div id="nowFullArtist" class="now-full-artist muted"></div>
+        </div>
+
+        <div class="now-full-controls">
+          <button id="nowFullPrev" class="player-btn"> <i class="fa-solid fa-backward-step"></i> </button>
+          <button id="nowFullPlay" class="player-btn player-btn-main"> <i id="nowFullPlayIcon" class="fa-solid fa-play"></i> </button>
+          <button id="nowFullNext" class="player-btn"> <i class="fa-solid fa-forward-step"></i> </button>
+        </div>
+
+        <div class="now-full-actions">
+          <button id="nowFullShuffle" class="player-btn"><i class="fa-solid fa-shuffle"></i></button>
+          <button id="nowFullQueue" class="player-btn"><i class="fa-solid fa-list"></i></button>
+          <button id="nowFullClose" class="player-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div id="nowFullQueueList" class="now-full-queue" style="display:none;"></div>
+      </div>
+    </div>
+
   <script src="app.js"></script>
 </body>
 </html>
