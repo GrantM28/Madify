@@ -79,7 +79,8 @@ const views = {
   home: document.getElementById("view-home"),
   library: document.getElementById("view-library"),
   playlists: document.getElementById("view-playlists"),
-  artist: document.getElementById("view-artist")
+  artist: document.getElementById("view-artist"),
+  album: document.getElementById("view-album")
 };
 
 const libraryBackBtn = document.getElementById("libraryBackBtn");
@@ -758,6 +759,10 @@ function renderLibraryCategory(category) {
     if (libraryControls) libraryControls.style.display = "flex";
     // ensure genres are populated for genre filter
     populateGenreOptions();
+    // show header for All Songs
+    if (libraryHeaderBar) libraryHeaderBar.style.display = 'flex';
+    if (libraryTitle) libraryTitle.textContent = 'All Songs';
+    if (librarySubtitle) librarySubtitle.textContent = `${allTracks.length} tracks`;
     renderSongsLibraryView();
   } else if (category === "artists") {
     if (libraryControls) libraryControls.style.display = "none";
