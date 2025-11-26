@@ -34,11 +34,15 @@ function safeTrackPath(relFile) {
 
 async function readCommonTags(absPath) {
   try {
-    const metadata = await mm.parseFile(absPath, { duration: false });
-    return metadata.common || {};
+    // Request duration as well so clients can show track length even
+    // when the streamed response doesn't expose a finite duration.
+    const metadata = await mm.parseFile(absPath, { duration: true });
+    const common = metadata.common || {};
+    const duration = metadata.format && typeof metadata.format.duration === 'number' ? metadata.format.duration : 0;
+    return { common, duration };
   } catch (err) {
     console.error("Metadata error:", absPath, err.message);
-    return {};
+    return { common: {}, duration: 0 };
   }
 }
 
@@ -96,7 +100,10 @@ async function walkMusicDir(dir, basePath = "") {
       genre: null
     };
 
-    const common = await readCommonTags(fullPath);
+
+    const meta = await readCommonTags(fullPath);
+    const common = meta.common || {};
+    const duration = meta.duration || 0;
 
     if (common.title) baseTrack.title = common.title;
     const tagArtist = common.albumartist || common.artist;
@@ -112,6 +119,7 @@ async function walkMusicDir(dir, basePath = "") {
 
     baseTrack.genres = genres;
     baseTrack.genre = genres.length > 0 ? genres[0] : null;
+    baseTrack.duration = duration;
 
     tracks.push(baseTrack);
   }

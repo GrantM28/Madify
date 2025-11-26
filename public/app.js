@@ -340,6 +340,22 @@ function playTrackCore(track) {
   const url = `/api/stream?file=${encodeURIComponent(track.file)}`;
   const cover = getCoverUrl(track);
 
+  // Avoid resetting the source if the same file is already loaded and playing
+  try {
+    const absoluteUrl = new URL(url, window.location.origin).href;
+    if (player.src && player.src === absoluteUrl) {
+      // same source — just ensure UI is synced and resume if paused
+      updateMiniPlayer(track);
+      updateMediaSession(track, cover);
+      updateQueueUI();
+      document.title = `${track.title} – ${track.artist || "Madify"}`;
+      if (player.paused) player.play().catch((err) => console.error("Play error:", err));
+      return;
+    }
+  } catch (e) {
+    // fallback: continue and set src normally
+  }
+
   player.src = url;
   player.play().catch((err) => console.error("Play error:", err));
   
@@ -427,33 +443,49 @@ player.addEventListener("pause", () => {
 });
 
 player.addEventListener("loadedmetadata", () => {
-  timeTotalEl.textContent = formatTime(player.duration || 0);
+  // Prefer the player's reported duration, but fall back to the currentTrack.duration
+  const effectiveDuration = Number.isFinite(player.duration) && player.duration > 0
+    ? player.duration
+    : (currentTrack && currentTrack.duration) || 0;
+
+  timeTotalEl.textContent = formatTime(effectiveDuration || 0);
   // initialize seek bar visual
   try {
-    const pct = player.duration ? (player.currentTime / player.duration) * 100 : 0;
+    const pct = effectiveDuration ? (player.currentTime / effectiveDuration) * 100 : 0;
     if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--separator) ${pct}%)`;
+    if (seekBar && typeof seekBar.value !== 'undefined') seekBar.value = pct;
   } catch (e) {}
 });
 
 player.addEventListener("timeupdate", () => {
-  if (player.duration) {
-    const pct = (player.currentTime / player.duration) * 100;
-    seekBar.value = pct;
-    timeCurrentEl.textContent = formatTime(player.currentTime);
-    timeTotalEl.textContent = formatTime(player.duration);
-    // update visual progress background for the range input
-    try { if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--separator) ${pct}%)`; } catch (e) {}
-    
-    if (miniProgress) {
-      miniProgress.style.width = `${pct}%`;
-    }
+  // Use player.duration when finite, otherwise fall back to track-provided duration
+  const effectiveDuration = Number.isFinite(player.duration) && player.duration > 0
+    ? player.duration
+    : (currentTrack && currentTrack.duration) || 0;
+
+  const pct = effectiveDuration ? (player.currentTime / effectiveDuration) * 100 : 0;
+  if (seekBar && typeof seekBar.value !== 'undefined') seekBar.value = pct;
+  timeCurrentEl.textContent = formatTime(player.currentTime);
+  timeTotalEl.textContent = formatTime(effectiveDuration || 0);
+  // update visual progress background for the range input
+  try {
+    if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--separator) ${pct}%)`;
+  } catch (e) {}
+
+  if (miniProgress) {
+    miniProgress.style.width = `${pct}%`;
   }
 });
 
 seekBar.addEventListener("input", () => {
-  if (!player.duration) return;
+  // Seek using the best available duration. If the player doesn't expose a
+  // finite duration, we fall back to the track's duration (from server).
+  const effectiveDuration = Number.isFinite(player.duration) && player.duration > 0
+    ? player.duration
+    : (currentTrack && currentTrack.duration) || 0;
+  if (!effectiveDuration) return;
   const pct = parseFloat(seekBar.value) / 100;
-  player.currentTime = pct * player.duration;
+  player.currentTime = pct * effectiveDuration;
   // reflect seeking visually
   try { const v = parseFloat(seekBar.value) || 0; if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${v}%, var(--separator) ${v}%)`; } catch (e) {}
 });
