@@ -78,6 +78,51 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
+// Delegated handler for playlist card "more" actions (rename/delete)
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest && e.target.closest('.more-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  const card = btn.closest('.playlist-card');
+  if (!card) return;
+  const plId = card.dataset.plId;
+  const pl = playlists.find(p => p.id == plId);
+  if (!pl) return;
+
+  // simple choice prompt to allow quick rename/delete
+  const action = window.prompt('Type "rename" to rename or "delete" to delete this playlist (leave empty to cancel)');
+  if (!action) return;
+  if (action.toLowerCase().startsWith('rename')) {
+    if (pl.id === 'liked') { alert('Cannot rename Liked playlist'); return; }
+    const newName = window.prompt('New playlist name', pl.name || '');
+    if (!newName) return;
+    try {
+      const res = await fetch(`/api/playlists/${encodeURIComponent(plId)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName.trim() })
+      });
+      if (!res.ok) throw new Error('Rename failed');
+      await loadPlaylists();
+      renderAllPlaylistsUI();
+      if (currentOpenedPlaylist && currentOpenedPlaylist.id === plId) {
+        currentOpenedPlaylist.name = newName.trim();
+        const nameEl = document.getElementById('playlistDetailName');
+        if (nameEl) nameEl.textContent = newName.trim();
+      }
+    } catch (err) { console.error(err); alert('Failed to rename playlist'); }
+  } else if (action.toLowerCase().startsWith('delete')) {
+    if (pl.id === 'liked') { alert('Cannot delete Liked playlist'); return; }
+    const ok = confirm(`Delete playlist "${pl.name}"? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/playlists/${encodeURIComponent(plId)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      await loadPlaylists();
+      renderAllPlaylistsUI();
+      if (currentOpenedPlaylist && currentOpenedPlaylist.id === plId) closePlaylistDetail();
+    } catch (err) { console.error(err); alert('Failed to delete playlist'); }
+  }
+});
+
 function getCoverUrl(track) {
   return `/api/cover?file=${encodeURIComponent(track.file)}`;
 }
@@ -504,6 +549,7 @@ function renderPlaylistCards(container) {
     const tracks = resolvePlaylistTracks(pl);
     const card = document.createElement("div");
     card.className = "playlist-card";
+    card.dataset.plId = pl.id;
 
     const title = document.createElement("div");
     title.className = "playlist-title";
@@ -517,9 +563,17 @@ function renderPlaylistCards(container) {
     chip.className = "playlist-chip";
     chip.textContent = pl.id === "liked" ? "Liked" : "Playlist";
 
+    // more (ellipsis) button for edit/delete
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'more-btn';
+    moreBtn.setAttribute('aria-label', 'Playlist options');
+    moreBtn.textContent = '⋯';
+    moreBtn.addEventListener('click', (ev) => ev.stopPropagation());
+
     card.appendChild(title);
     card.appendChild(subtitle);
     card.appendChild(chip);
+    card.appendChild(moreBtn);
 
     card.onclick = () => {
       openPlaylistDetail(pl);

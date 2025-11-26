@@ -11,6 +11,15 @@ The format is:
 
 ---
 
+## [0.4.5] - 2025-11-25
+
+### Changed
+
+## Major UI Updates
+- Changed the whole look of the UI to be more minimalist and user friendly.
+- Menu options are now on the bottom with bigger buttons.
+- Fullscreen now playing section now displays fullscreen as an overlay.
+
 ## [0.4.4] - 2025-11-25
 
 ### Changed

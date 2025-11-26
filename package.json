@@ -1,6 +1,6 @@
 {
   "name": "madify",
-  "version": "0.4.3",
+  "version": "0.4.5",
   "description": "Personal music server with Spotify-like UI",
   "main": "server.js",
   "scripts": {
