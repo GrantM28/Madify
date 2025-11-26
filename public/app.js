@@ -1127,9 +1127,10 @@ function renderHomeSections() {
       const tr = trackById.get(t.id);
       if (tr) suggestions.push(tr);
     }
-    // fill with random if needed
+    // fill with random if needed (limit suggestions to 5)
+    const SUGGEST_LIMIT = 5;
     const pool = allTracks.filter((t) => !recentIds.has(t.id) && !suggestions.includes(t));
-    while (suggestions.length < 12 && pool.length) {
+    while (suggestions.length < SUGGEST_LIMIT && pool.length) {
       const idx = Math.floor(Math.random() * pool.length);
       suggestions.push(pool.splice(idx,1)[0]);
     }
@@ -1148,7 +1149,7 @@ function renderHomeSections() {
     ];
 
     for (const mood of moods) {
-      const matches = allTracks.filter(mood.filter).slice(0, 6);
+      const matches = allTracks.filter(mood.filter).slice(0, 12);
       const card = document.createElement('div');
       card.className = 'playlist-card';
       const title = document.createElement('div');
@@ -1638,6 +1639,8 @@ async function init() {
   } catch (e) { console.error("playback debug setup failed", e); }
   await loadTracks();
   await loadPlaylists();
+  // restore persisted playback history and counts so homepage sections survive reload
+  loadPlaybackState();
   refreshTrackViews();
   syncShuffleButton();
   syncRepeatButton();
