@@ -340,11 +340,18 @@ body {
   padding: 16px 20px;
   border-bottom: 1px solid var(--separator);
   background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  flex-wrap: wrap; /* allow header items to wrap on narrow screens */
 }
-.album-title-wrap { flex: 1; }
-.album-actions { display:flex; gap:8px; align-items:center; }
+.album-title-wrap { flex: 1; min-width: 0; }
+.album-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
 .album-content { padding: 0 20px 40px; }
 .album-release { color: var(--text-secondary); }
+
+.album-info-row { display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.album-info-row .muted { font-size:13px; }
+
+.album-title { font-size:18px; font-weight:700; margin-bottom:6px; word-break:break-word; }
+.album-subtitle { color:var(--text-secondary); font-size:13px; word-break:break-word; }
 
 @media (max-width: 720px) {
   .album-header { padding: 12px 16px; }

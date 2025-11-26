@@ -87,6 +87,7 @@ const libraryBackBtn = document.getElementById("libraryBackBtn");
 const libraryHeaderBar = document.getElementById("libraryHeaderBar");
 const libraryTitle = document.getElementById("libraryTitle");
 const librarySubtitle = document.getElementById("librarySubtitle");
+const libraryCategoriesEl = document.querySelector('.library-categories');
 
 // Artist view refs
 const artistBackBtn = document.getElementById("artistBackBtn");
@@ -763,9 +764,13 @@ function renderLibraryCategory(category) {
     if (libraryHeaderBar) libraryHeaderBar.style.display = 'flex';
     if (libraryTitle) libraryTitle.textContent = 'All Songs';
     if (librarySubtitle) librarySubtitle.textContent = `${allTracks.length} tracks`;
+    // hide the category hero buttons when viewing All Songs
+    if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'none';
     renderSongsLibraryView();
   } else if (category === "artists") {
     if (libraryControls) libraryControls.style.display = "none";
+    // hide category hero buttons when viewing a subcategory
+    if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'none';
     const map = new Map();
     allTracks.forEach((t) => {
       const key = t.artist || "Unknown";
@@ -803,6 +808,7 @@ function renderLibraryCategory(category) {
     const grid = document.createElement("div");
     grid.className = "playlist-grid";
     libraryTrackListEl.appendChild(grid);
+    if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'none';
     
     albums.forEach(([key, tracks]) => {
       const [album, artist] = key.split("|");
@@ -834,6 +840,7 @@ function renderLibraryCategory(category) {
     });
     // wire album card clicks to open album page
   } else if (category === "genres") {
+    if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'none';
     // Build genre -> tracks map
     const map = new Map();
     allTracks.forEach((t) => {
@@ -1613,6 +1620,15 @@ function switchView(viewId) {
     currentLibraryView = null;
     currentLibraryData = null;
     if (libraryHeaderBar) libraryHeaderBar.style.display = "none";
+    // ensure the library category heroes are hidden when leaving library
+    if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'grid';
+  } else {
+    // entering library root: show category hero cards when no specific subview selected
+    if (!currentLibraryView) {
+      if (libraryCategoriesEl) libraryCategoriesEl.style.display = 'grid';
+      if (libraryTrackListEl) libraryTrackListEl.innerHTML = '';
+      if (libraryHeaderBar) libraryHeaderBar.style.display = 'none';
+    }
   }
   
   if (viewId !== "playlists") {
