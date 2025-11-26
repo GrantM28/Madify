@@ -11,6 +11,15 @@ The format is:
 
 ---
 
+## [0.4.6] - 2025-11-25
+
+### Added
+
+## Various Improvments
+- Added more categories to the home page, recently played, suggested, most played, etc.
+- Settings button has functionality.
+- Fixed ffmeg errors.
+
 ## [0.4.5] - 2025-11-25
 
 ### Changed

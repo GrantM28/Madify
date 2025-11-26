@@ -28,6 +28,37 @@
           </button>
         </div>
       </header>
+      
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="sheet-modal" aria-hidden="true">
+          <div class="sheet-modal-backdrop" id="settingsModalBackdrop"></div>
+          <div class="sheet-modal-content">
+            <div class="sheet-header">
+              <div class="sheet-title-wrap">
+                <div class="sheet-title">Settings</div>
+                <div class="sheet-subtitle">App preferences</div>
+              </div>
+              <button id="settingsModalClose" class="sheet-close">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div class="sheet-body">
+              <div style="padding: 12px 0;">
+                <div style="margin-bottom:8px;font-weight:600;">Playback</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <label style="flex:1">Enable pre-transcode (improves stability)</label>
+                  <input type="checkbox" id="optPreTranscode" />
+                </div>
+              </div>
+
+              <div style="padding: 12px 0;">
+                <div style="margin-bottom:8px;font-weight:600;">Library</div>
+                <button id="btnRescanLibrary" class="action-btn">Rescan library</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
       <section class="content">
         <!-- HOME VIEW -->
@@ -57,6 +88,18 @@
 
           <h2 class="section-heading">Recently Added</h2>
           <div id="homeRecent" class="track-list"></div>
+
+          <h2 class="section-heading">Recently Played</h2>
+          <div id="homeRecentlyPlayed" class="track-list"></div>
+
+          <h2 class="section-heading">Most Played</h2>
+          <div id="homeMostPlayed" class="track-list"></div>
+
+          <h2 class="section-heading">Suggested For You</h2>
+          <div id="homeSuggested" class="track-list"></div>
+
+          <h2 class="section-heading">Moods</h2>
+          <div id="homeMoods" class="playlist-grid"></div>
 
           <h2 class="section-heading">Playlists</h2>
           <div id="homePlaylists" class="playlist-grid"></div>

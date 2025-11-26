@@ -1,5 +1,9 @@
 // DOM refs
 const homeRecentEl = document.getElementById("homeRecent");
+const homeRecentlyPlayedEl = document.getElementById("homeRecentlyPlayed");
+const homeMostPlayedEl = document.getElementById("homeMostPlayed");
+const homeSuggestedEl = document.getElementById("homeSuggested");
+const homeMoodsEl = document.getElementById("homeMoods");
 const homePlaylistsEl = document.getElementById("homePlaylists");
 const libraryTrackListEl = document.getElementById("libraryTrackList");
 const playlistListEl = document.getElementById("playlistList");
@@ -48,6 +52,13 @@ const btnClearQueue = document.getElementById("btnClearQueue");
 const contextMenu = document.getElementById("contextMenu");
 const toastContainer = document.getElementById("toastContainer");
 
+const btnSettings = document.getElementById("btnSettings");
+const settingsModal = document.getElementById("settingsModal");
+const settingsModalClose = document.getElementById("settingsModalClose");
+const settingsModalBackdrop = document.getElementById("settingsModalBackdrop");
+const optPreTranscode = document.getElementById("optPreTranscode");
+const btnRescanLibrary = document.getElementById("btnRescanLibrary");
+
 const libraryPlayAll = document.getElementById("libraryPlayAll");
 const libraryShuffleAll = document.getElementById("libraryShuffleAll");
 
@@ -77,6 +88,10 @@ let queueIndex = -1;
 let shuffleEnabled = false;
 let repeatMode = 0; // 0 = off, 1 = all, 2 = one
 
+// Playback history and counts (persisted)
+let playHistory = []; // [{ id, at }]
+let playCounts = {}; // { [id]: count }
+
 // ---------- Helpers ----------
 
 function formatTime(seconds) {
@@ -86,6 +101,42 @@ function formatTime(seconds) {
     .padStart(2, "0");
   const m = Math.floor(seconds / 60);
   return `${m}:${s}`;
+}
+
+// Playback persistence helpers
+function loadPlaybackState() {
+  try {
+    const rawHist = localStorage.getItem('mf_playHistory');
+    const rawCounts = localStorage.getItem('mf_playCounts');
+    if (rawHist) playHistory = JSON.parse(rawHist) || [];
+    if (rawCounts) playCounts = JSON.parse(rawCounts) || {};
+  } catch (e) {
+    console.error('Failed to load playback state', e);
+    playHistory = [];
+    playCounts = {};
+  }
+}
+
+function savePlaybackState() {
+  try {
+    localStorage.setItem('mf_playHistory', JSON.stringify(playHistory.slice(0, 200)));
+    localStorage.setItem('mf_playCounts', JSON.stringify(playCounts || {}));
+  } catch (e) { console.error('Failed to save playback state', e); }
+}
+
+function recordPlay(track) {
+  if (!track) return;
+  const now = Date.now();
+  playHistory.unshift({ id: track.id, at: now });
+  // dedupe history by trimming duplicates beyond first occurrence when rendering
+  // increment playCounts
+  const key = String(track.id);
+  playCounts[key] = (playCounts[key] || 0) + 1;
+  // cap history length
+  if (playHistory.length > 200) playHistory.length = 200;
+  savePlaybackState();
+  // refresh homepage sections
+  renderHomeSections();
 }
 
 function getCoverUrl(track) {
@@ -339,6 +390,9 @@ function playTrackCore(track) {
   currentTrack = track;
   const url = `/api/stream?file=${encodeURIComponent(track.file)}`;
   const cover = getCoverUrl(track);
+
+  // record play for history/analytics
+  try { recordPlay(track); } catch (e) { console.error('recordPlay failed', e); }
 
   // Avoid resetting the source if the same file is already loaded and playing
   try {
@@ -875,28 +929,30 @@ function showPlaylistDetailMenu(pl, anchorEl) {
   menu.id = 'playlist-detail-menu';
   menu.style.position = 'absolute';
   menu.style.zIndex = 1200;
-  menu.style.left = `${Math.min(window.innerWidth - 160, rect.right - 150)}px`;
-  menu.style.top = `${rect.bottom + 8 + window.scrollY}px`;
-  menu.style.width = '140px';
+  menu.style.left = `${Math.min(window.innerWidth - 260, rect.right - 220)}px`;
+  menu.style.top = `${rect.bottom + 10 + window.scrollY}px`;
+  menu.style.width = '220px';
   menu.style.background = 'var(--bg-card)';
   menu.style.border = '1px solid var(--separator)';
-  menu.style.borderRadius = '8px';
-  menu.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+  menu.style.borderRadius = '12px';
+  menu.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6)';
   menu.style.overflow = 'hidden';
+  menu.style.fontSize = '15px';
 
   const btn = (text, icon, onClick) => {
     const it = document.createElement('button');
     it.className = 'context-menu-item';
     it.style.display = 'flex';
     it.style.alignItems = 'center';
-    it.style.gap = '8px';
+    it.style.gap = '10px';
     it.style.width = '100%';
-    it.style.padding = '10px 12px';
+    it.style.padding = '14px 16px';
     it.style.background = 'transparent';
     it.style.border = 'none';
     it.style.color = 'var(--text)';
     it.style.cursor = 'pointer';
-    it.innerHTML = `<i class="fa-solid ${icon}" style="width:18px;text-align:center;"></i><span style="flex:1;text-align:left">${text}</span>`;
+    it.style.fontSize = '15px';
+    it.innerHTML = `<i class="fa-solid ${icon}" style="width:22px;text-align:center;font-size:18px;"></i><span style="flex:1;text-align:left">${text}</span>`;
     it.addEventListener('click', async (e) => {
       e.stopPropagation();
       try { await onClick(); } catch (err) { console.error(err); }
@@ -1027,6 +1083,95 @@ function refreshTrackViews() {
   
   if (currentLibraryView) {
     renderLibraryCategory(currentLibraryView);
+  }
+
+  // also render homepage sections that rely on playback state
+  renderHomeSections();
+}
+
+function renderHomeSections() {
+  // Recently Played: dedupe keeping most recent occurrence
+  if (homeRecentlyPlayedEl) {
+    const seen = new Set();
+    const list = [];
+    for (const entry of playHistory) {
+      if (list.length >= 12) break;
+      if (!entry || entry.id === undefined) continue;
+      const id = entry.id;
+      if (seen.has(id)) continue;
+      const track = trackById.get(id);
+      if (track) { list.push(track); seen.add(id); }
+    }
+    if (list.length) renderTrackList(homeRecentlyPlayedEl, list);
+    else homeRecentlyPlayedEl.innerHTML = '<div class="muted" style="padding:20px;text-align:center;">No recently played</div>';
+  }
+
+  // Most Played
+  if (homeMostPlayedEl) {
+    const counts = Object.entries(playCounts || {}).map(([id, c]) => ({ id: Number(id), c }));
+    counts.sort((a, b) => b.c - a.c);
+    const list = counts.slice(0, 12).map((it) => trackById.get(it.id)).filter(Boolean);
+    if (list.length) renderTrackList(homeMostPlayedEl, list);
+    else homeMostPlayedEl.innerHTML = '<div class="muted" style="padding:20px;text-align:center;">No play data</div>';
+  }
+
+  // Suggested: mix of top played not recently played + random
+  if (homeSuggestedEl) {
+    const recentIds = new Set(playHistory.slice(0, 40).map((h) => h.id));
+    const suggestions = [];
+    // top played not in recent
+    const top = Object.entries(playCounts || {}).map(([id, c]) => ({ id: Number(id), c })).sort((a,b)=>b.c-a.c);
+    for (const t of top) {
+      if (suggestions.length >= 8) break;
+      if (recentIds.has(t.id)) continue;
+      const tr = trackById.get(t.id);
+      if (tr) suggestions.push(tr);
+    }
+    // fill with random if needed
+    const pool = allTracks.filter((t) => !recentIds.has(t.id) && !suggestions.includes(t));
+    while (suggestions.length < 12 && pool.length) {
+      const idx = Math.floor(Math.random() * pool.length);
+      suggestions.push(pool.splice(idx,1)[0]);
+    }
+    if (suggestions.length) renderTrackList(homeSuggestedEl, suggestions);
+    else homeSuggestedEl.innerHTML = '<div class="muted" style="padding:20px;text-align:center;">No suggestions yet</div>';
+  }
+
+  // Moods: build a few heuristic mood buckets based on genre
+  if (homeMoodsEl) {
+    homeMoodsEl.innerHTML = '';
+    const moods = [
+      { name: 'Chill', filter: (t)=> (t.genre||'').toLowerCase().includes('ambient') || (t.genre||'').toLowerCase().includes('chill') || (t.genre||'').toLowerCase().includes('acoustic') },
+      { name: 'Energetic', filter: (t)=> (t.genre||'').toLowerCase().includes('rock') || (t.genre||'').toLowerCase().includes('electronic') || (t.genre||'').toLowerCase().includes('dance') },
+      { name: 'Focus', filter: (t)=> (t.genre||'').toLowerCase().includes('classical') || (t.genre||'').toLowerCase().includes('ambient') },
+      { name: 'Party', filter: (t)=> (t.genre||'').toLowerCase().includes('hip') || (t.genre||'').toLowerCase().includes('pop') || (t.genre||'').toLowerCase().includes('dance') }
+    ];
+
+    for (const mood of moods) {
+      const matches = allTracks.filter(mood.filter).slice(0, 6);
+      const card = document.createElement('div');
+      card.className = 'playlist-card';
+      const title = document.createElement('div');
+      title.className = 'playlist-title';
+      title.textContent = mood.name;
+      const subtitle = document.createElement('div');
+      subtitle.className = 'playlist-subtitle';
+      subtitle.textContent = `${matches.length} tracks`;
+      if (matches[0]) {
+        const art = document.createElement('img');
+        art.className = 'album-art';
+        art.src = getCoverUrl(matches[0]);
+        art.onerror = () => { art.style.display = 'none'; };
+        card.appendChild(art);
+      }
+      card.appendChild(title);
+      card.appendChild(subtitle);
+      card.onclick = () => {
+        showLibraryDetail(mood.name, matches.length ? matches : allTracks.slice(0,20));
+        switchView('library');
+      };
+      homeMoodsEl.appendChild(card);
+    }
   }
 }
 
@@ -1268,6 +1413,39 @@ if (btnQueue) {
   btnQueue.addEventListener("click", () => {
     queueModal.setAttribute("aria-hidden", "false");
     updateQueueUI();
+  });
+}
+
+// Settings modal handlers
+if (btnSettings && settingsModal) {
+  btnSettings.addEventListener('click', () => {
+    settingsModal.setAttribute('aria-hidden', 'false');
+  });
+}
+
+if (settingsModalClose) {
+  settingsModalClose.addEventListener('click', () => {
+    settingsModal.setAttribute('aria-hidden', 'true');
+  });
+}
+
+if (settingsModalBackdrop) {
+  settingsModalBackdrop.addEventListener('click', () => {
+    settingsModal.setAttribute('aria-hidden', 'true');
+  });
+}
+
+if (btnRescanLibrary) {
+  btnRescanLibrary.addEventListener('click', async () => {
+    try {
+      // quick UX: reload tracks from server
+      await loadTracks();
+      refreshTrackViews();
+      showToast('Library rescanned', 'fa-check');
+    } catch (e) {
+      console.error('Rescan failed', e);
+      showToast('Rescan failed', 'fa-xmark');
+    }
   });
 }
 
