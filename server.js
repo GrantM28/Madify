@@ -436,10 +436,14 @@ app.get("/api/stream", (req, res) => {
     .audioBitrate("192k")
     .format("adts")
     .on("start", (cmd) => console.log("ffmpeg start:", cmd))
+    .on("end", () => console.log(`ffmpeg finished streaming for ${absPath}`))
+    .on("stderr", (line) => console.log(`ffmpeg stderr: ${line}`))
     .on("error", (err) => {
       console.error("ffmpeg error:", err.message);
       if (!res.headersSent) res.status(500).end();
     });
+
+  console.log(`Stream request: ${req.ip || req.socket.remoteAddress} file=${file} range=${req.headers.range || "(none)"}`);
 
   command.pipe(res, { end: true });
 });

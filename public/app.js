@@ -1337,6 +1337,26 @@ async function init() {
   player.volume = 1;
   volumeSlider.value = 100;
   miniPlayer.style.display = "none";
+  // Playback debug logging (helps diagnose mid-track restarts)
+  try {
+    const DBG = true;
+    if (DBG) {
+      const ev = (name) => (e) => {
+        console.log(`[player:${name}] time=${player.currentTime.toFixed(2)} dur=${player.duration} readyState=${player.readyState} networkState=${player.networkState}`, e && (e.type || e));
+      };
+
+      ["play","playing","pause","ended","stalled","waiting","suspend","abort","error","seeking","seeked","loadeddata","loadedmetadata","progress"].forEach((n) => {
+        player.addEventListener(n, ev(n));
+      });
+
+      player.addEventListener("error", () => {
+        console.error("Audio error", player.error);
+      });
+
+      // Detect abrupt socket/connection close
+      player.addEventListener("emptied", () => console.warn("player emptied event"));
+    }
+  } catch (e) { console.error("playback debug setup failed", e); }
   await loadTracks();
   await loadPlaylists();
   refreshTrackViews();
