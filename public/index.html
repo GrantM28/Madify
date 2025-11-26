@@ -3,235 +3,1077 @@
 <head>
   <meta charset="UTF-8" />
   <title>Madify</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- Font Awesome -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg: #000000;
+      --bg-elevated: #0a0a0a;
+      --bg-card: #121212;
+      --accent: #ff9500;
+      --accent-dim: rgba(255, 149, 0, 0.15);
+      --text: #ffffff;
+      --text-secondary: #8e8e93;
+      --separator: rgba(255, 255, 255, 0.08);
+      --radius: 16px;
+      --radius-sm: 12px;
+    }
 
-  <link rel="stylesheet" href="style.css" />
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: max(env(safe-area-inset-top), 12px) 20px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--separator);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent) 0%, #ff7700 100%);
+      box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
+    }
+
+    .logo-text {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 180px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .content {
+      padding: 0 20px 20px;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.view-active {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: none;
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .section-heading {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 24px 0 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .track-row:active {
+      transform: scale(0.98);
+      border-color: var(--accent);
+    }
+
+    .track-cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg-elevated);
+      flex-shrink: 0;
+    }
+
+    .track-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 14px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .add-pill, .like-pill {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .add-pill:active, .like-pill:active {
+      transform: scale(0.9);
+    }
+
+    .like-pill.liked {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .add-pill.in-playlist {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .library-categories {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .category-btn {
+      padding: 20px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: none;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .category-btn:active {
+      transform: scale(0.95);
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .category-btn i {
+      font-size: 28px;
+    }
+
+    .category-btn span {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .library-header-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: none;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .library-title {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .library-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .playlist-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .playlist-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .playlist-card:active {
+      transform: scale(0.95);
+      background: var(--accent-dim);
+    }
+
+    .playlist-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .playlist-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .playlist-chip {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .album-art {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg-elevated);
+      margin-bottom: 12px;
+    }
+
+    .create-playlist-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-bottom: 24px;
+      transition: all 0.2s ease;
+    }
+
+    .create-playlist-btn:active {
+      transform: scale(0.97);
+      opacity: 0.85;
+    }
+
+    .sheet {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg);
+      z-index: 100;
+      overflow-y: auto;
+      padding: max(env(safe-area-inset-top), 12px) 20px 20px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sheet[style*="display: block"], .sheet[style*="display:block"] {
+      transform: translateY(0);
+    }
+
+    .sheet-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+    }
+
+    .sheet-modal[aria-hidden="false"] {
+      display: flex;
+    }
+
+    .sheet-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+    }
+
+    .sheet-modal-content {
+      position: relative;
+      width: 100%;
+      max-height: 85vh;
+      background: var(--bg-elevated);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 20px 20px max(env(safe-area-inset-bottom), 20px);
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .sheet-modal[aria-hidden="false"] .sheet-modal-content {
+      transform: translateY(0);
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .sheet-title-wrap {
+      flex: 1;
+    }
+
+    .sheet-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .sheet-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .sheet-close, .sheet-more {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .sheet-body {
+      overflow-y: auto;
+      max-height: calc(85vh - 120px);
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .action-btn.full-width {
+      width: 100%;
+    }
+
+    .modal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .modal-item {
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .modal-item:active {
+      transform: scale(0.98);
+      background: var(--accent-dim);
+    }
+
+    .modal-item.in-playlist {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .create-new-section {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .create-new-section input {
+      flex: 1;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .input-large {
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    .mini-player {
+      position: fixed;
+      bottom: calc(70px + env(safe-area-inset-bottom));
+      left: 20px;
+      right: 20px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 50;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .mini-player:active {
+      transform: scale(0.98);
+    }
+
+    .mini-player-content {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .mini-cover {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg-elevated);
+      flex-shrink: 0;
+    }
+
+    .mini-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mini-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-artist {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-play-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .mini-progress {
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .now-full {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: none;
+    }
+
+    .now-full[aria-hidden="false"] {
+      display: block;
+    }
+
+    .now-full-content {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
+      padding: max(env(safe-area-inset-top), 20px) 24px max(env(safe-area-inset-bottom), 24px);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .now-full-handle {
+      width: 40px;
+      height: 5px;
+      background: var(--separator);
+      border-radius: 999px;
+      margin: 0 auto 20px;
+    }
+
+    .now-full-art {
+      width: min(85vw, 400px);
+      height: min(85vw, 400px);
+      border-radius: var(--radius);
+      object-fit: cover;
+      background: var(--bg-card);
+      margin: 0 auto 24px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    .now-full-meta {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .now-full-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .now-full-artist {
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+
+    .now-full-progress {
+      margin-bottom: 32px;
+    }
+
+    #seekBar {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--separator);
+      border-radius: 2px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    #seekBar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(255, 149, 0, 0.4);
+    }
+
+    #seekBar::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: none;
+    }
+
+    .progress-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .now-full-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .control-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .control-btn:active {
+      transform: scale(0.9);
+      color: var(--accent);
+    }
+
+    .control-btn-main {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(255, 149, 0, 0.4);
+    }
+
+    .control-btn-main:active {
+      transform: scale(0.95);
+    }
+
+    .now-full-close {
+      position: absolute;
+      top: max(env(safe-area-inset-top), 20px);
+      left: 24px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--separator);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
+      z-index: 40;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn i {
+      font-size: 22px;
+    }
+
+    .nav-btn span {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.9);
+    }
+
+    .muted {
+      color: var(--text-secondary);
+    }
+
+    audio {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--separator);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  </style>
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <div class="logo">
-        <span class="dot"></span>
-        <span class="logo-text">Madify</span>
-      </div>
-      <nav>
-        <button class="nav-item active" data-view="home">Home</button>
-
-        <div class="nav-group">
-          <button class="nav-item" data-view="library" id="navLibraryBtn">Library</button>
-          <div class="submenu" id="librarySubmenu">
-            <button class="submenu-item" data-lib="recent">Recently Added</button>
-            <button class="submenu-item" data-lib="artists">Artists</button>
-            <button class="submenu-item" data-lib="albums">Albums</button>
-            <button class="submenu-item" data-lib="songs">Songs</button>
-            <button class="submenu-item" data-lib="genres">Genres</button>
-          </div>
-        </div>
-
-        <button class="nav-item" data-view="playlists">Playlists</button>
-        <button class="nav-item" data-view="dj">AI DJ</button>
-      </nav>
-    </aside>
-
-    <div class="overlay" id="overlay"></div>
-
     <main class="main">
       <header class="header">
-        <button id="menuToggle" class="menu-toggle" aria-label="Menu">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="header-text">
-          <h1>Good evening</h1>
-          <p class="subtitle">Your personal Unraid-powered music server.</p>
+        <div class="logo">
+          <span class="dot"></span>
+          <span class="logo-text">Madify</span>
         </div>
-        <button id="djButton" class="dj-button">
-          <i class="fa-solid fa-robot" style="margin-right: 0.4rem;"></i>
-          <span>AI DJ</span>
-        </button>
       </header>
 
       <section class="content">
         <!-- HOME VIEW -->
         <section id="view-home" class="view view-active">
-          <h2 class="section-heading">Your playlists</h2>
-          <div id="homePlaylists" class="playlist-list"></div>
-
-          <h2 class="section-heading">Recently added</h2>
+          <input id="searchInput" class="search-input" type="search" placeholder="Search your music" />
+          
+          <h2 class="section-heading">Recently Added</h2>
           <div id="homeRecent" class="track-list"></div>
+
+          <h2 class="section-heading">Playlists</h2>
+          <div id="homePlaylists" class="playlist-grid"></div>
         </section>
 
         <!-- LIBRARY VIEW -->
         <section id="view-library" class="view">
-          <div id="libraryHeaderBar" class="library-topbar">
-            <button id="libraryBackBtn" class="back-btn" aria-label="Back" style="display:none;">←</button>
-            <div class="library-title-wrap">
-              <div id="libraryTitle" class="library-title">Library</div>
-              <div id="librarySubtitle" class="library-subtitle muted">Browse your collection</div>
-            </div>
-            <div id="libraryCount" class="library-count muted"></div>
+          <div class="library-categories">
+            <button class="category-btn" data-lib="songs">
+              <i class="fa-solid fa-music"></i>
+              <span>All Songs</span>
+            </button>
+            <button class="category-btn" data-lib="artists">
+              <i class="fa-solid fa-user"></i>
+              <span>Artists</span>
+            </button>
+            <button class="category-btn" data-lib="albums">
+              <i class="fa-solid fa-compact-disc"></i>
+              <span>Albums</span>
+            </button>
+            <button class="category-btn" data-lib="genres">
+              <i class="fa-solid fa-tag"></i>
+              <span>Genres</span>
+            </button>
           </div>
 
-          <div class="library-header">
-            <input
-              id="searchInput"
-              class="search-input"
-              type="text"
-              placeholder="Search songs, artists, albums"
-            />
+          <div id="libraryContent">
+            <div id="libraryHeaderBar" class="library-header-bar" style="display:none;">
+              <button id="libraryBackBtn" class="back-btn" aria-label="Back">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <div>
+                <div id="libraryTitle" class="library-title">Library</div>
+                <div id="librarySubtitle" class="library-subtitle"></div>
+              </div>
+            </div>
+            <div id="libraryTrackList" class="track-list"></div>
           </div>
-          <div id="libraryTrackList" class="track-list"></div>
         </section>
 
         <!-- PLAYLISTS VIEW -->
         <section id="view-playlists" class="view">
-          <div class="playlist-create">
-            <input
-              id="newPlaylistName"
-              class="search-input"
-              type="text"
-              placeholder="New playlist name"
-            />
-            <button id="btnCreatePlaylist" class="create-button">
-              Create
-            </button>
-          </div>
-          <p class="muted" style="margin-bottom: 0.4rem;">
-            Tap the + button on any song to add it to a playlist.
-          </p>
-          <div id="playlistList" class="playlist-list"></div>
+          <button id="btnCreatePlaylistTop" class="create-playlist-btn">
+            <i class="fa-solid fa-plus"></i>
+            <span>New Playlist</span>
+          </button>
+          
+          <div id="playlistList" class="playlist-grid"></div>
 
-          <!-- Playlist detail (hidden until a playlist is opened) -->
-          <div id="playlistDetail" class="playlist-detail" style="display:none; margin-top:1rem;">
-            <div class="playlist-detail-header">
-              <div class="playlist-detail-title">
-                <div id="playlistDetailName" class="playlist-title">Playlist</div>
-                <div id="playlistDetailCount" class="playlist-subtitle muted">0 tracks</div>
+          <!-- Playlist detail sheet -->
+          <div id="playlistDetail" class="sheet" style="display:none;">
+            <div class="sheet-header">
+              <button id="playlistDetailBack" class="sheet-close">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div class="sheet-title-wrap">
+                <div id="playlistDetailName" class="sheet-title">Playlist</div>
+                <div id="playlistDetailCount" class="sheet-subtitle">0 tracks</div>
               </div>
-              <div class="playlist-detail-controls">
-                <button id="playlistDetailPlay" class="create-button">Play</button>
-                <button id="playlistDetailShuffle" class="create-button">Shuffle</button>
-                <button id="playlistDetailBack" class="create-button">Back</button>
-              </div>
+              <button id="playlistDetailMore" class="sheet-more">
+                <i class="fa-solid fa-ellipsis"></i>
+              </button>
             </div>
-            <div id="playlistDetailTrackList" class="track-list" style="margin-top:0.8rem;"></div>
+            <div class="sheet-actions">
+              <button id="playlistDetailPlay" class="action-btn primary">
+                <i class="fa-solid fa-play"></i>
+                <span>Play</span>
+              </button>
+              <button id="playlistDetailShuffle" class="action-btn">
+                <i class="fa-solid fa-shuffle"></i>
+                <span>Shuffle</span>
+              </button>
+            </div>
+            <div id="playlistDetailTrackList" class="track-list"></div>
           </div>
-        </section>
-
-        <!-- DJ VIEW -->
-        <section id="view-dj" class="view">
-          <p class="muted">
-            AI DJ controls will live here soon. For now, tap the AI DJ button
-            in the header to hear from your virtual host.
-          </p>
         </section>
       </section>
     </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="home">
+        <i class="fa-solid fa-house"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" data-view="library">
+        <i class="fa-solid fa-book"></i>
+        <span>Library</span>
+      </button>
+      <button class="nav-btn" data-view="playlists">
+        <i class="fa-solid fa-list-ul"></i>
+        <span>Playlists</span>
+      </button>
+    </nav>
   </div>
 
-  <footer class="player-bar">
-    <div class="now-playing">
-      <div class="np-art">
-        <div class="np-cover-placeholder" id="npCoverPlaceholder"></div>
-        <img id="npCover" class="np-cover" alt="" />
+  <!-- Mini Player -->
+  <div class="mini-player" id="miniPlayer">
+    <div class="mini-player-content">
+      <img id="miniCover" class="mini-cover" alt="" />
+      <div class="mini-meta">
+        <div class="mini-title" id="miniTitle">Nothing playing</div>
+        <div class="mini-artist" id="miniArtist"></div>
       </div>
-      <div class="np-meta">
-        <div class="track-title" id="nowTitle">Nothing playing</div>
-        <div class="track-artist" id="nowArtist"></div>
+      <button id="miniPlayPause" class="mini-play-btn">
+        <i id="miniPlayIcon" class="fa-solid fa-play"></i>
+      </button>
+    </div>
+    <div class="mini-progress" id="miniProgress"></div>
+  </div>
+
+  <!-- Full Player Sheet -->
+  <div id="nowFull" class="now-full" aria-hidden="true">
+    <div class="now-full-content" id="nowFullContent">
+      <div class="now-full-handle"></div>
+      
+      <img id="nowFullArt" class="now-full-art" src="" alt="Album art" />
+      
+      <div class="now-full-meta">
+        <div id="nowFullTitle" class="now-full-title">Nothing playing</div>
+        <div id="nowFullArtist" class="now-full-artist">Unknown Artist</div>
       </div>
-      <div style="display:flex;align-items:center;gap:0.4rem;">
-        <button id="btnAddNow" class="add-now-btn" aria-label="Add to playlist">
-          <i class="fa-solid fa-plus"></i>
+
+      <div class="now-full-progress">
+        <input type="range" id="seekBar" min="0" max="100" value="0" />
+        <div class="progress-times">
+          <span id="timeCurrent">0:00</span>
+          <span id="timeTotal">0:00</span>
+        </div>
+      </div>
+
+      <div class="now-full-controls">
+        <button id="btnShuffle" class="control-btn">
+          <i class="fa-solid fa-shuffle"></i>
         </button>
-        <button id="btnLikeNow" class="like-now-btn" aria-label="Like song">
+        <button id="btnPrev" class="control-btn">
+          <i class="fa-solid fa-backward-step"></i>
+        </button>
+        <button id="btnPlayPause" class="control-btn-main">
+          <i id="iconPlayPause" class="fa-solid fa-play"></i>
+        </button>
+        <button id="btnNext" class="control-btn">
+          <i class="fa-solid fa-forward-step"></i>
+        </button>
+        <button id="btnLikeNow" class="control-btn">
           <i id="iconLikeNow" class="fa-regular fa-heart"></i>
         </button>
       </div>
+
+      <button id="nowFullClose" class="now-full-close">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
     </div>
+  </div>
 
-    <div class="player-main">
-      <div class="player-buttons">
-        <button id="btnShuffle" class="player-btn" aria-label="Shuffle">
-          <i class="fa-solid fa-shuffle"></i>
-        </button>
-        <button id="btnPrev" class="player-btn" aria-label="Previous">
-          <i class="fa-solid fa-backward-step"></i>
-        </button>
-        <button
-          id="btnPlayPause"
-          class="player-btn player-btn-main"
-          aria-label="Play/Pause"
-        >
-          <i id="iconPlayPause" class="fa-solid fa-play"></i>
-        </button>
-        <button id="btnNext" class="player-btn" aria-label="Next">
-          <i class="fa-solid fa-forward-step"></i>
+  <!-- Add to Playlist Sheet -->
+  <div id="playlistModal" class="sheet-modal" aria-hidden="true">
+    <div class="sheet-modal-backdrop" id="playlistModalBackdrop"></div>
+    <div class="sheet-modal-content">
+      <div class="sheet-header">
+        <div class="sheet-title-wrap">
+          <div class="sheet-title">Add to Playlist</div>
+        </div>
+        <button id="playlistModalClose" class="sheet-close">
+          <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <div class="player-seek">
-        <span id="timeCurrent" class="player-time">0:00</span>
-        <input type="range" id="seekBar" min="0" max="100" value="0" />
-        <span id="timeTotal" class="player-time">0:00</span>
-      </div>
-    </div>
-
-    <audio id="player"></audio>
-  </footer>
-
-  <!-- Playlist picker modal -->
-  <div id="playlistModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" id="playlistModalBackdrop"></div>
-    <div class="modal-content" role="dialog" aria-modal="true">
-      <div class="modal-header">
-        <h3>Add to playlist</h3>
-        <button id="playlistModalClose" class="modal-close" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
+      
+      <div class="sheet-body">
         <div id="playlistModalList" class="modal-list"></div>
-        <div class="modal-create">
+        
+        <div class="create-new-section">
           <input id="playlistModalNewName" placeholder="Create new playlist" />
-          <button id="playlistModalCreate">Create</button>
+          <button id="playlistModalCreate" class="action-btn primary">
+            <i class="fa-solid fa-plus"></i>
+            <span>Create</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- toast container removed per user preference -->
-
-    <!-- Fullscreen Now Playing -->
-    <div id="nowFull" class="now-full" aria-hidden="true">
-      <div class="now-full-backdrop" id="nowFullBackdrop"></div>
-      <div class="now-full-content" id="nowFullContent">
-        <div class="now-full-handle" id="nowFullHandle">↧</div>
-        <div class="now-full-art-wrap">
-          <img id="nowFullArt" class="now-full-art" src="" alt="Album art" />
+  <!-- Create Playlist Sheet -->
+  <div id="createPlaylistModal" class="sheet-modal" aria-hidden="true">
+    <div class="sheet-modal-backdrop" id="createPlaylistBackdrop"></div>
+    <div class="sheet-modal-content">
+      <div class="sheet-header">
+        <div class="sheet-title-wrap">
+          <div class="sheet-title">New Playlist</div>
         </div>
-        <div class="now-full-meta">
-          <div id="nowFullTitle" class="now-full-title">Nothing playing</div>
-          <div id="nowFullArtist" class="now-full-artist muted"></div>
-        </div>
-
-        <div class="now-full-controls">
-          <button id="nowFullPrev" class="player-btn"> <i class="fa-solid fa-backward-step"></i> </button>
-          <button id="nowFullPlay" class="player-btn player-btn-main"> <i id="nowFullPlayIcon" class="fa-solid fa-play"></i> </button>
-          <button id="nowFullNext" class="player-btn"> <i class="fa-solid fa-forward-step"></i> </button>
-        </div>
-
-        <div class="now-full-actions">
-          <button id="nowFullShuffle" class="player-btn"><i class="fa-solid fa-shuffle"></i></button>
-          <button id="nowFullQueue" class="player-btn"><i class="fa-solid fa-list"></i></button>
-          <button id="nowFullClose" class="player-btn"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-
-        <div id="nowFullQueueList" class="now-full-queue" style="display:none;"></div>
+        <button id="createPlaylistClose" class="sheet-close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="sheet-body">
+        <input id="newPlaylistName" class="input-large" placeholder="Playlist name" />
+        <button id="btnCreatePlaylist" class="action-btn primary full-width">
+          <span>Create Playlist</span>
+        </button>
       </div>
     </div>
+  </div>
 
+  <audio id="player"></audio>
   <script src="app.js"></script>
 </body>
 </html>
