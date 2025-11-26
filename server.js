@@ -4,6 +4,8 @@ const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
 const mm = require("music-metadata");
 const { randomUUID } = require("crypto");
+const crypto = require("crypto");
+const { PassThrough } = require("stream");
 
 const app = express();
 
@@ -390,8 +392,9 @@ app.get("/api/stream", (req, res) => {
   const ext = path.extname(absPath).toLowerCase();
   console.log("Streaming:", absPath, "ext:", ext);
 
-  // Direct for mp3/m4a/wav
-  if (ext === ".mp3" || ext === ".m4a" || ext === ".wav") {
+  // Direct for mp3/m4a/wav - serve file with range support
+  const directExt = [".mp3", ".m4a", ".wav"];
+  if (directExt.includes(ext)) {
     try {
       const stat = fs.statSync(absPath);
       const range = req.headers.range;
@@ -428,24 +431,91 @@ app.get("/api/stream", (req, res) => {
     return;
   }
 
-  // Transcode others (flac/ogg/etc) to AAC ADTS
+  // For other formats (flac, ogg, etc) transcode to AAC ADTS and cache the result
+  const cacheDir = path.join(__dirname, "transcode_cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+  // Use file path + mtime as cache key
+  let mtime = 0;
+  try { mtime = fs.statSync(absPath).mtimeMs || 0; } catch {}
+  const key = crypto.createHash("sha1").update(absPath + "|" + mtime).digest("hex");
+  const cachePath = path.join(cacheDir, `${key}.aac`);
+
+  // If cached transcode exists, serve it with range support
+  if (fs.existsSync(cachePath)) {
+    try {
+      const stat = fs.statSync(cachePath);
+      const range = req.headers.range;
+      const total = stat.size;
+      const contentType = "audio/aac";
+
+      if (range) {
+        const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(startStr, 10);
+        const end = endStr ? parseInt(endStr, 10) : total - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${total}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": contentType
+        });
+
+        fs.createReadStream(cachePath, { start, end }).pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": total,
+          "Content-Type": contentType
+        });
+        fs.createReadStream(cachePath).pipe(res);
+      }
+      console.log(`Serving cached transcode: ${cachePath} (${total} bytes)`);
+      return;
+    } catch (err) {
+      console.error("Error serving cached transcode", err);
+      // fall through to transcode path
+    }
+  }
+
+  // Not cached: transcode and write to cache while piping to client
   res.setHeader("Content-Type", "audio/aac");
+  const pass = new PassThrough();
+  const writeStream = fs.createWriteStream(cachePath);
 
   const command = ffmpeg(absPath)
     .audioCodec("aac")
     .audioBitrate("192k")
     .format("adts")
     .on("start", (cmd) => console.log("ffmpeg start:", cmd))
-    .on("end", () => console.log(`ffmpeg finished streaming for ${absPath}`))
+    .on("end", () => {
+      console.log(`ffmpeg finished streaming for ${absPath}`);
+      writeStream.end();
+    })
     .on("stderr", (line) => console.log(`ffmpeg stderr: ${line}`))
     .on("error", (err) => {
       console.error("ffmpeg error:", err.message);
+      try { writeStream.destroy(); } catch (e) {}
       if (!res.headersSent) res.status(500).end();
     });
 
-  console.log(`Stream request: ${req.ip || req.socket.remoteAddress} file=${file} range=${req.headers.range || "(none)"}`);
+  console.log(`Stream request (transcode): ${req.socket.remoteAddress} file=${file} range=${req.headers.range || "(none)"} -> cache=${cachePath}`);
 
-  command.pipe(res, { end: true });
+  // Pipe ffmpeg output into a PassThrough so we can write to disk and to the response
+  const ff = command.pipe();
+  ff.on('error', (e) => console.error('ff pipe error', e));
+  ff.pipe(pass);
+  pass.pipe(res);
+  pass.pipe(writeStream);
+
+  // If client aborts, kill ffmpeg and cleanup
+  req.on('close', () => {
+    try {
+      command.kill('SIGTERM');
+    } catch (e) {}
+    try { pass.destroy(); } catch (e) {}
+    console.log('Client closed connection while transcoding');
+  });
 });
 
 // ---------- AI DJ placeholder ----------
