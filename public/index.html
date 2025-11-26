@@ -50,6 +50,17 @@
                   <label style="flex:1">Enable pre-transcode (improves stability)</label>
                   <input type="checkbox" id="optPreTranscode" />
                 </div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+                  <div style="font-weight:600;">Stream Quality</div>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <select id="optQualitySelect">
+                      <option value="128k">128k</option>
+                      <option value="320k">320k</option>
+                      <option value="lossless">Lossless (FLAC)</option>
+                    </select>
+                    <div id="qualityNote" class="muted" style="font-size:13px;">Choose preferred stream bitrate</div>
+                  </div>
+                </div>
               </div>
 
               <div style="padding: 12px 0;">
@@ -105,6 +116,63 @@
           <div id="homePlaylists" class="playlist-grid"></div>
         </section>
 
+        <!-- ARTIST VIEW -->
+        <section id="view-artist" class="view">
+          <div class="artist-header">
+            <button id="artistBackBtn" class="sheet-close" aria-label="Back">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="artist-title-wrap">
+              <div id="artistName" class="sheet-title">Artist</div>
+              <div id="artistSubtitle" class="sheet-subtitle">Top songs • Albums</div>
+            </div>
+          </div>
+
+          <div class="artist-content content">
+            <h2 class="section-heading">Top Songs</h2>
+            <div id="artistTopSongs" class="track-list"></div>
+
+            <h2 class="section-heading">Albums</h2>
+            <div id="artistAlbums" class="playlist-grid"></div>
+
+            <h2 class="section-heading">Bio</h2>
+            <div id="artistBio" class="artist-bio muted">No bio available — placeholder text.</div>
+
+            <h2 class="section-heading">Related Artists</h2>
+            <div id="artistRelated" class="playlist-grid"></div>
+          </div>
+        </section>
+
+        <!-- ALBUM VIEW -->
+        <section id="view-album" class="view">
+          <div class="album-header">
+            <button id="albumBackBtn" class="sheet-close" aria-label="Back">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="album-title-wrap">
+              <div id="albumTitle" class="sheet-title">Album</div>
+              <div id="albumSubtitle" class="sheet-subtitle">Tracklist</div>
+            </div>
+            <div class="album-actions">
+              <button id="albumPlayBtn" class="action-btn primary"><i class="fa-solid fa-play"></i><span>Play</span></button>
+              <button id="albumShuffleBtn" class="action-btn"><i class="fa-solid fa-shuffle"></i><span>Shuffle</span></button>
+            </div>
+          </div>
+
+          <div class="album-content content">
+            <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+              <div id="albumReleaseYear" class="muted">Year: Unknown</div>
+              <div id="albumTrackCount" class="muted">0 tracks</div>
+            </div>
+
+            <h2 class="section-heading">Tracklist</h2>
+            <div id="albumTracklist" class="track-list"></div>
+
+            <h2 class="section-heading">Other albums by artist</h2>
+            <div id="albumOtherAlbums" class="playlist-grid"></div>
+          </div>
+        </section>
+
         <!-- LIBRARY VIEW -->
         <section id="view-library" class="view">
           <div class="library-categories">
@@ -145,6 +213,31 @@
               </div>
             </div>
             <div id="libraryTrackList" class="track-list"></div>
+            
+              <!-- Library controls: sort & filter for All Songs -->
+              <div id="libraryControls" class="library-controls" style="display:none; margin-top:12px;">
+                <label style="display:flex;align-items:center;gap:8px;">
+                  <span class="muted">Sort</span>
+                  <select id="libSortSelect">
+                    <option value="alpha">Alphabetical</option>
+                    <option value="date">By Date</option>
+                    <option value="pop">By Popularity</option>
+                  </select>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;">
+                  <span class="muted">Filter</span>
+                  <select id="libFilterSelect">
+                    <option value="all">All</option>
+                    <option value="liked">Liked</option>
+                    <option value="downloaded">Downloaded</option>
+                    <option value="genre">Genre</option>
+                  </select>
+                </label>
+                <label id="libGenreWrap" style="display:none;align-items:center;gap:8px;">
+                  <span class="muted">Genre</span>
+                  <select id="libGenreSelect"></select>
+                </label>
+              </div>
           </div>
         </section>
 
