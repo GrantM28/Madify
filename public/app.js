@@ -845,6 +845,16 @@ function openPlaylistDetail(pl) {
       closePlaylistDetail();
     };
   }
+
+  // Wire the top-right "more" button to show Edit/Delete actions
+  const moreBtn = document.getElementById("playlistDetailMore");
+  if (moreBtn) {
+    // remove any previous handler to avoid duplicates
+    moreBtn.onclick = (e) => {
+      e.stopPropagation();
+      showPlaylistDetailMenu(pl, moreBtn);
+    };
+  }
 }
 
 function closePlaylistDetail() {
@@ -852,6 +862,97 @@ function closePlaylistDetail() {
   if (!detail) return;
   detail.style.display = "none";
   currentOpenedPlaylist = null;
+}
+
+// Small anchored menu for playlist detail actions (Edit / Delete)
+function showPlaylistDetailMenu(pl, anchorEl) {
+  // remove any existing menu
+  const existing = document.getElementById('playlist-detail-menu');
+  if (existing) existing.remove();
+
+  const rect = anchorEl.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.id = 'playlist-detail-menu';
+  menu.style.position = 'absolute';
+  menu.style.zIndex = 1200;
+  menu.style.left = `${Math.min(window.innerWidth - 160, rect.right - 150)}px`;
+  menu.style.top = `${rect.bottom + 8 + window.scrollY}px`;
+  menu.style.width = '140px';
+  menu.style.background = 'var(--bg-card)';
+  menu.style.border = '1px solid var(--separator)';
+  menu.style.borderRadius = '8px';
+  menu.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+  menu.style.overflow = 'hidden';
+
+  const btn = (text, icon, onClick) => {
+    const it = document.createElement('button');
+    it.className = 'context-menu-item';
+    it.style.display = 'flex';
+    it.style.alignItems = 'center';
+    it.style.gap = '8px';
+    it.style.width = '100%';
+    it.style.padding = '10px 12px';
+    it.style.background = 'transparent';
+    it.style.border = 'none';
+    it.style.color = 'var(--text)';
+    it.style.cursor = 'pointer';
+    it.innerHTML = `<i class="fa-solid ${icon}" style="width:18px;text-align:center;"></i><span style="flex:1;text-align:left">${text}</span>`;
+    it.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try { await onClick(); } catch (err) { console.error(err); }
+      menu.remove();
+    });
+    return it;
+  };
+
+  // Edit -> prompt for new name then call PUT /api/playlists/:id
+  const editBtn = btn('Edit', 'fa-pen', async () => {
+    const newName = window.prompt('Rename playlist', pl.name);
+    if (!newName || !newName.trim()) return;
+    const name = newName.trim();
+    const res = await fetch(`/api/playlists/${encodeURIComponent(pl.id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Rename failed: ' + txt);
+    }
+    await loadPlaylists();
+    renderAllPlaylistsUI();
+    // update sheet title
+    const nameEl = document.getElementById('playlistDetailName');
+    if (nameEl) nameEl.textContent = name;
+    showToast('Renamed playlist', 'fa-pen');
+  });
+
+  // Delete -> confirm then call DELETE /api/playlists/:id
+  const delBtn = btn('Delete', 'fa-trash', async () => {
+    if (!confirm('Delete this playlist? This cannot be undone.')) return;
+    const res = await fetch(`/api/playlists/${encodeURIComponent(pl.id)}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Delete failed: ' + txt);
+    }
+    await loadPlaylists();
+    renderAllPlaylistsUI();
+    closePlaylistDetail();
+    showToast('Playlist deleted', 'fa-trash');
+  });
+
+  menu.appendChild(editBtn);
+  menu.appendChild(delBtn);
+  document.body.appendChild(menu);
+
+  // Dismiss on outside click
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && e.target !== anchorEl) {
+      menu.remove();
+      document.removeEventListener('click', onDocClick);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', onDocClick), 0);
 }
 
 async function createPlaylistOnServer(name) {
