@@ -428,6 +428,11 @@ player.addEventListener("pause", () => {
 
 player.addEventListener("loadedmetadata", () => {
   timeTotalEl.textContent = formatTime(player.duration || 0);
+  // initialize seek bar visual
+  try {
+    const pct = player.duration ? (player.currentTime / player.duration) * 100 : 0;
+    if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--separator) ${pct}%)`;
+  } catch (e) {}
 });
 
 player.addEventListener("timeupdate", () => {
@@ -436,6 +441,8 @@ player.addEventListener("timeupdate", () => {
     seekBar.value = pct;
     timeCurrentEl.textContent = formatTime(player.currentTime);
     timeTotalEl.textContent = formatTime(player.duration);
+    // update visual progress background for the range input
+    try { if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--separator) ${pct}%)`; } catch (e) {}
     
     if (miniProgress) {
       miniProgress.style.width = `${pct}%`;
@@ -447,6 +454,8 @@ seekBar.addEventListener("input", () => {
   if (!player.duration) return;
   const pct = parseFloat(seekBar.value) / 100;
   player.currentTime = pct * player.duration;
+  // reflect seeking visually
+  try { const v = parseFloat(seekBar.value) || 0; if (seekBar && seekBar.style) seekBar.style.background = `linear-gradient(90deg, var(--accent) ${v}%, var(--separator) ${v}%)`; } catch (e) {}
 });
 
 volumeSlider.addEventListener("input", () => {
